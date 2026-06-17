@@ -213,10 +213,13 @@ function setEditorType(type, focus = true) {
   els.textEditor.classList.toggle('hidden', type === 'date');
   els.dateEditor.classList.toggle('hidden', type !== 'date');
   els.cellInput.inputMode = type === 'number' ? 'decimal' : 'text';
+  scheduleViewportUpdate();
   if (focus) {
     requestAnimationFrame(() => {
       if (type === 'date') els.dateInput.focus();
       else els.cellInput.focus();
+      scheduleViewportUpdate();
+      scheduleViewportUpdate(180);
     });
   }
 }
@@ -255,6 +258,7 @@ function setScale(nextScale) {
   els.scaleLayer.style.height = `${100 / state.scale}%`;
   els.zoomText.textContent = `${Math.round(state.scale * 100)}%`;
   scheduleViewportUpdate();
+  scheduleViewportUpdate(120);
 }
 
 function distance(a, b) {
@@ -329,14 +333,26 @@ function updateEditorMetrics() {
   els.gestureLayer.style.paddingBottom = `${state.editorHeight + 10}px`;
 }
 
-function scheduleViewportUpdate() {
+function scheduleViewportUpdate(delay = 0) {
+  if (delay > 0) {
+    window.setTimeout(() => scheduleViewportUpdate(), delay);
+    return;
+  }
   cancelAnimationFrame(state.viewportRaf);
   state.viewportRaf = requestAnimationFrame(() => {
+    const scrollLeft = els.gestureLayer.scrollLeft;
+    const scrollTop = els.gestureLayer.scrollTop;
     updateEditorMetrics();
     const size = getSheetViewportSize();
     els.scaleLayer.style.minWidth = `${size.width}px`;
     els.scaleLayer.style.minHeight = `${size.height}px`;
-    state.spreadsheet?.reRender();
+    if (typeof state.spreadsheet?.reload === 'function') {
+      state.spreadsheet.reload();
+    } else {
+      state.spreadsheet?.reRender();
+    }
+    els.gestureLayer.scrollLeft = scrollLeft;
+    els.gestureLayer.scrollTop = scrollTop;
   });
 }
 
@@ -351,7 +367,10 @@ function bindEvents() {
   document.querySelector('#cancelEdit').addEventListener('click', cancelEdit);
   document.querySelector('#saveDate').addEventListener('click', saveDate);
   document.querySelector('#cancelDate').addEventListener('click', cancelEdit);
-  document.querySelector('#focusEditor').addEventListener('click', () => setEditorType(state.editorType, true));
+  document.querySelector('#focusEditor').addEventListener('click', () => {
+    setEditorType(state.editorType, true);
+    scheduleViewportUpdate(260);
+  });
   document.querySelector('#zoomIn').addEventListener('click', () => setScale(state.scale + 0.1));
   document.querySelector('#zoomOut').addEventListener('click', () => setScale(state.scale - 0.1));
   document.querySelector('#resetZoom').addEventListener('click', () => setScale(1));
@@ -366,8 +385,18 @@ function bindEvents() {
       saveText();
     }
   });
+  els.cellInput.addEventListener('focus', () => {
+    scheduleViewportUpdate();
+    scheduleViewportUpdate(260);
+  });
+  els.cellInput.addEventListener('blur', () => scheduleViewportUpdate(80));
   els.cellInput.addEventListener('compositionstart', () => els.cellInput.dataset.composing = 'true');
   els.cellInput.addEventListener('compositionend', () => els.cellInput.dataset.composing = 'false');
+  els.dateInput.addEventListener('focus', () => {
+    scheduleViewportUpdate();
+    scheduleViewportUpdate(260);
+  });
+  els.dateInput.addEventListener('blur', () => scheduleViewportUpdate(80));
 
   els.gestureLayer.addEventListener('pointerdown', onPointerDown, { passive: true });
   els.gestureLayer.addEventListener('pointermove', onPointerMove, { passive: false });
