@@ -1,0 +1,20 @@
+{
+  "name": "mobile-xspreadsheet-h5",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@vitejs/plugin-legacy": "^5.4.3",
+    "vite": "^5.4.11",
+    "x-data-spreadsheet": "^1.1.9"
+  },
+  "devDependencies": {
+    "less": "^4.6.6",
+    "localtunnel": "^2.0.2"
+  }
+}
