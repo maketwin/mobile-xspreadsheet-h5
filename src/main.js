@@ -55,6 +55,8 @@ app.innerHTML = `
 `;
 
 const els = {
+  appShell: document.querySelector('.mobile-excel'),
+  topbar: document.querySelector('.topbar'),
   gestureLayer: document.querySelector('#gestureLayer'),
   scaleLayer: document.querySelector('#scaleLayer'),
   zoomText: document.querySelector('#zoomText'),
@@ -77,6 +79,8 @@ const state = {
   pinchStartDistance: 0,
   pointerCache: new Map(),
   keyboardOffset: 0,
+  editorHeight: 132,
+  viewportRaf: 0,
 };
 
 const columns = ['项目组', '版本', '负责人', '系统', '需求说明', '日期', '状态'];
@@ -142,10 +146,10 @@ function initSpreadsheet() {
     mode: 'edit',
     showToolbar: false,
     showContextmenu: false,
-    showBottomBar: true,
+    showBottomBar: false,
     view: {
-      height: () => Math.max(360, els.gestureLayer.clientHeight / state.scale),
-      width: () => Math.max(640, els.gestureLayer.clientWidth / state.scale),
+      height: () => getSheetViewportSize().height,
+      width: () => getSheetViewportSize().width,
     },
     row: { len: 120, height: 30 },
     col: { len: 26, width: 100, indexWidth: 52, minWidth: 52 },
@@ -167,6 +171,7 @@ function initSpreadsheet() {
   });
 
   updateSelection({ text: rows[0][2] }, 1, 2);
+  scheduleViewportUpdate();
 }
 
 function updateSelection(cell, ri, ci) {
@@ -203,6 +208,7 @@ function normalizeDate(text) {
 
 function setEditorType(type, focus = true) {
   state.editorType = type;
+  document.documentElement.dataset.editorType = type;
   els.cellType.textContent = type === 'date' ? '日期' : type === 'number' ? '数字' : '文本';
   els.textEditor.classList.toggle('hidden', type === 'date');
   els.dateEditor.classList.toggle('hidden', type !== 'date');
@@ -248,7 +254,7 @@ function setScale(nextScale) {
   els.scaleLayer.style.width = `${100 / state.scale}%`;
   els.scaleLayer.style.height = `${100 / state.scale}%`;
   els.zoomText.textContent = `${Math.round(state.scale * 100)}%`;
-  requestAnimationFrame(() => state.spreadsheet?.reRender());
+  scheduleViewportUpdate();
 }
 
 function distance(a, b) {
@@ -288,9 +294,50 @@ function onPointerUp(event) {
 
 function syncKeyboardOffset() {
   const vv = window.visualViewport;
-  if (!vv) return;
-  const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  const offset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  state.keyboardOffset = offset;
   document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
+  document.documentElement.classList.toggle('keyboard-open', offset > 80);
+  scheduleViewportUpdate();
+}
+
+function getVisibleAppHeight() {
+  const vv = window.visualViewport;
+  if (vv && window.matchMedia('(max-width: 739px)').matches) {
+    return vv.height;
+  }
+  return els.appShell.clientHeight || window.innerHeight;
+}
+
+function getSheetViewportSize() {
+  const topbarHeight = els.topbar.getBoundingClientRect().height || 64;
+  const editorHeight = state.editorHeight || els.cellEditor.getBoundingClientRect().height || 132;
+  const appWidth = els.appShell.clientWidth || window.innerWidth;
+  const visibleHeight = getVisibleAppHeight();
+  const availableHeight = visibleHeight - topbarHeight - editorHeight - 6;
+
+  return {
+    width: Math.max(320, Math.floor(appWidth / state.scale)),
+    height: Math.max(220, Math.floor(availableHeight / state.scale)),
+  };
+}
+
+function updateEditorMetrics() {
+  const rect = els.cellEditor.getBoundingClientRect();
+  state.editorHeight = Math.ceil(rect.height);
+  document.documentElement.style.setProperty('--editor-height', `${state.editorHeight}px`);
+  els.gestureLayer.style.paddingBottom = `${state.editorHeight + 10}px`;
+}
+
+function scheduleViewportUpdate() {
+  cancelAnimationFrame(state.viewportRaf);
+  state.viewportRaf = requestAnimationFrame(() => {
+    updateEditorMetrics();
+    const size = getSheetViewportSize();
+    els.scaleLayer.style.minWidth = `${size.width}px`;
+    els.scaleLayer.style.minHeight = `${size.height}px`;
+    state.spreadsheet?.reRender();
+  });
 }
 
 function bindEvents() {
@@ -333,8 +380,11 @@ function bindEvents() {
   }
   window.addEventListener('resize', () => {
     syncKeyboardOffset();
-    state.spreadsheet?.reRender();
+    scheduleViewportUpdate();
   });
+
+  const editorObserver = new ResizeObserver(() => scheduleViewportUpdate());
+  editorObserver.observe(els.cellEditor);
 }
 
 bindEvents();

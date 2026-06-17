@@ -5,6 +5,7 @@
   --soft: #f4f7fb;
   --blue: #1677ff;
   --keyboard-offset: 0px;
+  --editor-height: 132px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -36,6 +37,7 @@ button {
 
 .mobile-excel {
   width: 100%;
+  height: 100vh;
   height: 100dvh;
   display: grid;
   grid-template-rows: 64px minmax(0, 1fr);
@@ -102,10 +104,10 @@ button {
 .sheet-viewport {
   min-height: 0;
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   background: #fff;
   touch-action: pan-x pan-y;
-  padding-bottom: 126px;
+  padding-bottom: calc(var(--editor-height) + 10px);
 }
 
 .sheet-viewport.pinching {
@@ -115,9 +117,10 @@ button {
 .sheet-scale {
   width: 100%;
   height: 100%;
-  min-width: 680px;
-  min-height: 560px;
+  min-width: 320px;
+  min-height: 320px;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 #xspreadsheet {
@@ -127,9 +130,15 @@ button {
 
 .x-spreadsheet {
   font-size: 13px;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .x-spreadsheet-toolbar {
+  display: none !important;
+}
+
+.x-spreadsheet-editor {
   display: none !important;
 }
 
@@ -137,10 +146,19 @@ button {
   touch-action: pan-x pan-y;
 }
 
+.x-spreadsheet-bottombar {
+  display: none !important;
+}
+
+.x-spreadsheet-overlayer,
+.x-spreadsheet-overlayer-content {
+  touch-action: pan-x pan-y;
+}
+
 .gesture-tip {
   position: fixed;
   left: 50%;
-  bottom: calc(152px + var(--keyboard-offset));
+  bottom: calc(var(--editor-height) + 18px + var(--keyboard-offset));
   z-index: 50;
   transform: translateX(-50%);
   max-width: calc(100vw - 42px);
@@ -169,6 +187,7 @@ button {
   background: #fff;
   box-shadow: 0 -12px 26px rgba(15, 23, 42, .10);
   transition: bottom .18s ease;
+  padding-bottom: max(0px, var(--safe-bottom));
 }
 
 .editor-meta {
@@ -184,11 +203,11 @@ button {
 
 .input-row,
 .date-editor {
-  min-height: 52px;
+  min-height: 54px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 54px 54px;
+  grid-template-columns: minmax(0, 1fr) 52px 52px;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   padding: 6px 10px 8px;
 }
 
@@ -229,7 +248,7 @@ button {
 }
 
 .editor-toolbar {
-  height: 52px;
+  height: 50px;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 1px;
@@ -245,6 +264,34 @@ button {
   color: #334155;
   font-size: 13px;
   font-weight: 700;
+}
+
+.keyboard-open .editor-meta {
+  height: 24px;
+  padding-top: 4px;
+}
+
+.keyboard-open .input-row,
+.keyboard-open .date-editor {
+  min-height: 48px;
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.keyboard-open #cellInput,
+.keyboard-open #dateInput,
+.keyboard-open .small-button {
+  height: 36px;
+}
+
+.keyboard-open .editor-toolbar {
+  height: 44px;
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.keyboard-open .editor-toolbar button {
+  font-size: 12px;
 }
 
 .hidden {
@@ -270,5 +317,37 @@ button {
   .cell-editor,
   .gesture-tip {
     position: absolute;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .icon-button {
+    width: 34px;
+    height: 34px;
+    font-size: 23px;
+  }
+
+  .input-row,
+  .date-editor {
+    grid-template-columns: minmax(0, 1fr) 46px 46px;
+    gap: 5px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .small-button {
+    font-size: 12px;
+  }
+
+  .editor-toolbar {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding-left: 6px;
+    padding-right: 6px;
   }
 }
