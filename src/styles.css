@@ -102,6 +102,21 @@ button {
   gap: 2px;
 }
 
+.perf-button {
+  min-width: 34px;
+  height: 30px;
+  border: 1px solid #d7e3f3;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.perf-button:active {
+  background: #eaf2ff;
+}
+
 .sheet-viewport {
   min-height: 0;
   position: relative;
@@ -176,6 +191,32 @@ button {
 
 .gesture-tip.show {
   opacity: 1;
+}
+
+.perf-panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 45;
+  display: grid;
+  gap: 3px;
+  max-width: min(360px, calc(100% - 20px));
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .14);
+  color: #1f2937;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.perf-panel strong,
+.perf-panel span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .long-press-menu {

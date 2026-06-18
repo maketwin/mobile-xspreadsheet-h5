@@ -12,6 +12,8 @@ app.innerHTML = `
         <span id="zoomText">100%</span>
       </div>
       <div class="top-actions">
+        <button class="perf-button" type="button" data-perf-rows="1000">1k</button>
+        <button class="perf-button" type="button" data-perf-rows="5000">5k</button>
         <button class="icon-button muted" type="button" aria-label="撤销">↶</button>
         <button class="icon-button muted" type="button" aria-label="重做">↷</button>
         <button class="icon-button" type="button" id="resetZoom" aria-label="重置缩放">□</button>
@@ -24,6 +26,7 @@ app.innerHTML = `
         <div id="xspreadsheet"></div>
       </div>
       <div class="gesture-tip" id="gestureTip">双指捏合可缩放，单指拖动可浏览表格</div>
+      <div class="perf-panel hidden" id="perfPanel" aria-live="polite"></div>
       <div class="long-press-menu hidden" id="longPressMenu" role="menu" aria-label="单元格快捷菜单">
         <div class="menu-title">
           <strong id="menuCellAddress">C2</strong>
@@ -75,6 +78,7 @@ const els = {
   scaleLayer: document.querySelector('#scaleLayer'),
   zoomText: document.querySelector('#zoomText'),
   gestureTip: document.querySelector('#gestureTip'),
+  perfPanel: document.querySelector('#perfPanel'),
   longPressMenu: document.querySelector('#longPressMenu'),
   menuCellAddress: document.querySelector('#menuCellAddress'),
   menuCellText: document.querySelector('#menuCellText'),
@@ -100,6 +104,8 @@ const state = {
   editorHeight: 132,
   viewportRaf: 0,
   viewportTimer: 0,
+  lastViewportSize: null,
+  perfMetrics: null,
   longPressTimer: 0,
   longPressStart: null,
   longPressPointerId: null,
@@ -126,8 +132,9 @@ const rows = [
 
 function buildSheetData() {
   const cells = {};
+  cells[0] = {};
   columns.forEach((text, ci) => {
-    cells[ci] = { text, style: 1 };
+    cells[0][ci] = { text, style: 1 };
   });
 
   rows.forEach((row, ri) => {
@@ -163,6 +170,192 @@ function buildSheetData() {
   };
 }
 
+function buildLargeSheetData(rowCount = 1000, colCount = 50) {
+  const cells = {};
+  const statusValues = ['进行中', '待确认', '已完成', '风险'];
+  const systems = ['OA', 'MES', 'ERP', '回放', '应用市场', 'AI代码生成'];
+  const owners = ['郭绵翔', '李良国', '涂辉', '李星达', '吕俊伶', '魏伟剑', '冯亦磊'];
+  const statusStyleMap = {
+    进行中: 4,
+    待确认: 5,
+    已完成: 6,
+    风险: 7,
+  };
+
+  cells[0] = {};
+  for (let ci = 0; ci < colCount; ci += 1) {
+    cells[0][ci] = { text: ci < columns.length ? columns[ci] : `字段${ci + 1}`, style: 1 };
+  }
+
+  for (let ri = 1; ri < rowCount; ri += 1) {
+    const rowCells = {};
+    for (let ci = 0; ci < colCount; ci += 1) {
+      let text = '';
+      let style = 0;
+      if (ri % 2 === 0) style = 3;
+      if (ci === 0) {
+        text = ri % 3 === 0 ? '移动组' : ri % 3 === 1 ? 'WEB一组' : '平台组';
+        style = 8 + (ri % 3);
+      } else if (ci === 1) {
+        text = `${(ri % 6) + 1}.${ci % 4}`;
+        style = 11;
+      } else if (ci === 2) {
+        text = owners[ri % owners.length];
+        style = 12;
+      } else if (ci === 3) {
+        text = systems[ri % systems.length];
+        style = 13;
+      } else if (ci === 4) {
+        text = `性能测试需求-${ri}-${ci}`;
+        style = ri % 5 === 0 ? 14 : style;
+      }
+      else if (ci === 5) {
+        text = `2026-06-${String((ri % 28) + 1).padStart(2, '0')}`;
+        style = 2;
+      } else if (ci === 6) {
+        text = statusValues[ri % statusValues.length];
+        style = statusStyleMap[text];
+      } else if (ci % 12 === 0 && ri > 2) {
+        text = `=SUM(B${ri}:C${ri})`;
+        style = 15;
+      } else {
+        text = `${ri}-${ci}`;
+        if (ci % 8 === 0) style = 16;
+        if (ci % 10 === 0) style = 17;
+      }
+      rowCells[ci] = { text, style };
+    }
+    cells[ri] = rowCells;
+  }
+
+  return {
+    name: `性能测试 ${rowCount}x${colCount}`,
+    freeze: 'A2',
+    styles: [
+      { align: 'center', valign: 'middle' },
+      {
+        bgcolor: '#e8f1ff',
+        color: '#1455d9',
+        font: { bold: true },
+        align: 'center',
+        border: { bottom: ['medium', '#9bbcf7'] },
+      },
+      { color: '#087a5a', align: 'center' },
+      { bgcolor: '#f8fafc', color: '#334155', align: 'center' },
+      { bgcolor: '#e8f7ee', color: '#087a5a', font: { bold: true }, align: 'center' },
+      { bgcolor: '#fff7e6', color: '#b25e09', font: { bold: true }, align: 'center' },
+      { bgcolor: '#eaf2ff', color: '#175cd3', font: { bold: true }, align: 'center' },
+      { bgcolor: '#fff1f2', color: '#b42318', font: { bold: true }, align: 'center' },
+      { bgcolor: '#edf7ff', color: '#175cd3', align: 'center' },
+      { bgcolor: '#f0fdf4', color: '#15803d', align: 'center' },
+      { bgcolor: '#fef3c7', color: '#92400e', align: 'center' },
+      { color: '#475467', align: 'center' },
+      { color: '#344054', font: { bold: true }, align: 'center' },
+      { bgcolor: '#f7f5ff', color: '#6941c6', align: 'center' },
+      { bgcolor: '#fff', color: '#111827', align: 'left', textwrap: true },
+      { bgcolor: '#f1f5f9', color: '#475467', align: 'right' },
+      { color: '#0f766e', align: 'right' },
+      { color: '#7c3aed', font: { italic: true }, align: 'center' },
+    ],
+    rows: { len: rowCount, cells },
+    cols: {
+      len: colCount,
+      0: { width: 92 },
+      1: { width: 70 },
+      2: { width: 94 },
+      3: { width: 92 },
+      4: { width: 260 },
+      5: { width: 112 },
+      6: { width: 92 },
+    },
+  };
+}
+
+function resetPerfMetrics() {
+  state.perfMetrics = {
+    renderCount: 0,
+    renderTotal: 0,
+    renderMax: 0,
+  };
+}
+
+function installPerfHooks() {
+  const table = state.spreadsheet?.sheet?.table;
+  if (!table || table.render.__perfWrapped) return;
+  const rawRender = table.render.bind(table);
+  table.render = (...args) => {
+    const start = performance.now();
+    const result = rawRender(...args);
+    const duration = performance.now() - start;
+    if (state.perfMetrics) {
+      state.perfMetrics.renderCount += 1;
+      state.perfMetrics.renderTotal += duration;
+      state.perfMetrics.renderMax = Math.max(state.perfMetrics.renderMax, duration);
+    }
+    return result;
+  };
+  table.render.__perfWrapped = true;
+}
+
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+function formatMs(value) {
+  return `${value.toFixed(1)}ms`;
+}
+
+function updatePerfPanel(result, running = false) {
+  if (!els.perfPanel) return;
+  els.perfPanel.classList.remove('hidden');
+  if (running) {
+    els.perfPanel.textContent = `性能测试运行中：${result.rows} x ${result.cols}`;
+    return;
+  }
+  els.perfPanel.innerHTML = `
+    <strong>${result.rows} x ${result.cols}</strong>
+    <span>生成 ${formatMs(result.generateMs)}</span>
+    <span>加载 ${formatMs(result.loadMs)}</span>
+    <span>滚动 ${formatMs(result.scrollMs)}</span>
+    <span>渲染 ${result.renderCount} 次 / 总 ${formatMs(result.renderTotal)} / 峰值 ${formatMs(result.renderMax)}</span>
+  `;
+}
+
+async function runSpreadsheetPerf(rowCount = 1000, colCount = 50) {
+  installPerfHooks();
+  const result = { rows: rowCount, cols: colCount };
+  updatePerfPanel(result, true);
+  await nextFrame();
+
+  resetPerfMetrics();
+  let start = performance.now();
+  const data = buildLargeSheetData(rowCount, colCount);
+  result.generateMs = performance.now() - start;
+
+  start = performance.now();
+  state.spreadsheet.loadData(data);
+  result.loadMs = performance.now() - start;
+  await nextFrame();
+
+  const scrollStart = performance.now();
+  const { sheet } = state.spreadsheet;
+  const { data: sheetData } = sheet;
+  const step = Math.max(120, Math.floor((rowCount * 30) / 30));
+  for (let i = 1; i <= 30; i += 1) {
+    sheetData.scrolly(i * step, () => {
+      sheet.table.render();
+    });
+  }
+  result.scrollMs = performance.now() - scrollStart;
+  result.scrollTargetPx = step * 30;
+
+  Object.assign(result, state.perfMetrics);
+  updatePerfPanel(result);
+  showGestureTip(`性能测试完成：${rowCount} x ${colCount}`);
+  window.__lastSpreadsheetPerf = result;
+  return result;
+}
+
 function initSpreadsheet() {
   state.spreadsheet = new Spreadsheet('#xspreadsheet', {
     mode: 'edit',
@@ -186,6 +379,7 @@ function initSpreadsheet() {
   });
 
   state.spreadsheet.loadData(buildSheetData());
+  installPerfHooks();
   state.spreadsheet.on('cell-selected', (cell, ri, ci) => {
     updateSelection(cell, ri, ci);
   });
@@ -304,14 +498,14 @@ function clearSelectedCell() {
   showGestureTip('已清空当前单元格');
 }
 
-function setScale(nextScale, { immediate = true } = {}) {
+function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
   state.scale = Math.min(1.7, Math.max(0.72, nextScale));
   els.scaleLayer.style.transform = `scale(${state.scale})`;
   els.scaleLayer.style.width = `${100 / state.scale}%`;
   els.scaleLayer.style.height = `${100 / state.scale}%`;
   els.zoomText.textContent = `${Math.round(state.scale * 100)}%`;
   hideLongPressMenu();
-  scheduleViewportUpdate(immediate ? 0 : 90);
+  if (updateViewport) scheduleViewportUpdate(immediate ? 0 : 90);
 }
 
 function distance(a, b) {
@@ -350,7 +544,10 @@ function onPointerMove(event) {
   const points = [...state.pointerCache.values()];
   const nextDistance = distance(points[0], points[1]);
   if (!state.pinchStartDistance) return;
-  setScale(state.baseScale * (nextDistance / state.pinchStartDistance), { immediate: false });
+  setScale(state.baseScale * (nextDistance / state.pinchStartDistance), {
+    immediate: false,
+    updateViewport: false,
+  });
 }
 
 function onPointerUp(event) {
@@ -468,12 +665,17 @@ function updateEditorMetrics() {
   els.gestureLayer.style.paddingBottom = `${state.editorHeight + 10}px`;
 }
 
-function scheduleViewportUpdate(delay = 0) {
+function viewportSizeChanged(size) {
+  const last = state.lastViewportSize;
+  return !last || last.width !== size.width || last.height !== size.height;
+}
+
+function scheduleViewportUpdate(delay = 0, force = false) {
   if (delay > 0) {
     window.clearTimeout(state.viewportTimer);
     state.viewportTimer = window.setTimeout(() => {
       state.viewportTimer = 0;
-      scheduleViewportUpdate();
+      scheduleViewportUpdate(0, force);
     }, delay);
     return;
   }
@@ -485,6 +687,11 @@ function scheduleViewportUpdate(delay = 0) {
     const scrollTop = els.gestureLayer.scrollTop;
     updateEditorMetrics();
     const size = getSheetViewportSize();
+    const needsReload = force || viewportSizeChanged(size);
+    if (!needsReload) {
+      return;
+    }
+    state.lastViewportSize = size;
     els.scaleLayer.style.minWidth = `${size.width}px`;
     els.scaleLayer.style.minHeight = `${size.height}px`;
     if (typeof state.spreadsheet?.resize === 'function') {
@@ -524,6 +731,11 @@ function bindEvents() {
   document.querySelector('#zoomIn').addEventListener('click', () => setScale(state.scale + 0.1));
   document.querySelector('#zoomOut').addEventListener('click', () => setScale(state.scale - 0.1));
   document.querySelector('#resetZoom').addEventListener('click', () => setScale(1));
+  document.querySelectorAll('[data-perf-rows]').forEach((button) => {
+    button.addEventListener('click', () => {
+      runSpreadsheetPerf(Number(button.dataset.perfRows), 50);
+    });
+  });
 
   document.querySelectorAll('[data-editor]').forEach((button) => {
     button.addEventListener('click', () => setEditorType(button.dataset.editor, true));
@@ -585,5 +797,6 @@ function bindEvents() {
 
 bindEvents();
 initSpreadsheet();
+window.runSpreadsheetPerf = runSpreadsheetPerf;
 setScale(1);
 syncKeyboardOffset();

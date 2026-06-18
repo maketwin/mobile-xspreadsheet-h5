@@ -352,6 +352,13 @@ export default class DataProxy {
     this.exceptRowSet = new Set();
     this.sortedRowMap = new Map();
     this.unsortedRowMap = new Map();
+    this.defaultCellStyle = this.defaultStyle();
+    this.styleCache = new Map();
+  }
+
+  resetStyleCache() {
+    this.defaultCellStyle = this.defaultStyle();
+    this.styleCache.clear();
   }
 
   addValidation(mode, ref, validator) {
@@ -961,8 +968,14 @@ export default class DataProxy {
   getCellStyleOrDefault(ri, ci) {
     const { styles, rows } = this;
     const cell = rows.getCell(ri, ci);
-    const cellStyle = (cell && cell.style !== undefined) ? styles[cell.style] : {};
-    return helper.merge(this.defaultStyle(), cellStyle);
+    if (!cell || cell.style === undefined) {
+      return this.defaultCellStyle;
+    }
+    const styleIndex = cell.style;
+    if (!this.styleCache.has(styleIndex)) {
+      this.styleCache.set(styleIndex, helper.merge(this.defaultStyle(), styles[styleIndex] || {}));
+    }
+    return this.styleCache.get(styleIndex);
   }
 
   getSelectedCellStyle() {
@@ -1069,17 +1082,19 @@ export default class DataProxy {
 
     let [x, y] = [0, 0];
     let [eri, eci] = [rows.len, cols.len];
+    const viewHeight = this.viewHeight();
+    const viewWidth = this.viewWidth();
     for (let i = ri; i < rows.len; i += 1) {
       if (!exceptRowSet.has(i)) {
         y += rows.getHeight(i);
         eri = i;
       }
-      if (y > this.viewHeight()) break;
+      if (y > viewHeight) break;
     }
     for (let j = ci; j < cols.len; j += 1) {
       x += cols.getWidth(j);
       eci = j;
-      if (x > this.viewWidth()) break;
+      if (x > viewWidth) break;
     }
     // console.log(ri, ci, eri, eci, x, y);
     return new CellRange(ri, ci, eri, eci, x, y);
@@ -1119,6 +1134,7 @@ export default class DataProxy {
     const frset = this.exceptRowSet;
     const frary = [...frset];
     let offset = 0;
+    const viewHeight = this.viewHeight();
     for (let i = 0; i < frary.length; i += 1) {
       if (frary[i] < min) {
         offset += 1;
@@ -1133,7 +1149,7 @@ export default class DataProxy {
         if (rowHeight > 0) {
           cb(i, y, rowHeight);
           y += rowHeight;
-          if (y > this.viewHeight()) break;
+          if (y > viewHeight) break;
         }
       }
     }
@@ -1142,12 +1158,13 @@ export default class DataProxy {
   colEach(min, max, cb) {
     let x = 0;
     const { cols } = this;
+    const viewWidth = this.viewWidth();
     for (let i = min; i <= max; i += 1) {
       const colWidth = cols.getWidth(i);
       if (colWidth > 0) {
         cb(i, x, colWidth);
         x += colWidth;
-        if (x > this.viewWidth()) break;
+        if (x > viewWidth) break;
       }
     }
   }
@@ -1164,6 +1181,7 @@ export default class DataProxy {
       if (helper.equals(style, nstyle)) return i;
     }
     styles.push(nstyle);
+    this.resetStyleCache();
     return styles.length - 1;
   }
 
@@ -1187,6 +1205,7 @@ export default class DataProxy {
         this[property] = d[property];
       }
     });
+    this.resetStyleCache();
     return this;
   }
 
