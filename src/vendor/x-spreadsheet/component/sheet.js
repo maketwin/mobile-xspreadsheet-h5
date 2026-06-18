@@ -20,23 +20,11 @@ import { xtoast } from './message';
 import { cssPrefix } from '../config';
 import { formulas } from '../core/formula';
 
-/**
- * @desc throttle fn
- * @param func function
- * @param wait Delay in milliseconds
- */
-function throttle(func, wait) {
-  let timeout;
-  return (...arg) => {
-    const that = this;
-    const args = arg;
-    if (!timeout) {
-      timeout = setTimeout(() => {
-        timeout = null;
-        func.apply(that, args);
-      }, wait);
-    }
-  };
+function requestFrame(fn) {
+  if (window.requestAnimationFrame) {
+    return window.requestAnimationFrame(fn);
+  }
+  return window.setTimeout(fn, 16);
 }
 
 function scrollbarMove() {
@@ -171,76 +159,71 @@ function overlayerMousemove(evt) {
   }
 }
 
-// let scrollThreshold = 15;
 function overlayerMousescroll(evt) {
-  // scrollThreshold -= 1;
-  // if (scrollThreshold > 0) return;
-  // scrollThreshold = 15;
-
-  const { verticalScrollbar, horizontalScrollbar, data } = this;
-  const { top } = verticalScrollbar.scroll();
-  const { left } = horizontalScrollbar.scroll();
-  // console.log('evt:::', evt.wheelDelta, evt.detail * 40);
-
-  const { rows, cols } = data;
-
-  // deltaY for vertical delta
-  const { deltaY, deltaX } = evt;
-  const loopValue = (ii, vFunc) => {
-    let i = ii;
-    let v = 0;
-    do {
-      v = vFunc(i);
-      i += 1;
-    } while (v <= 0);
-    return v;
-  };
-  // console.log('deltaX', deltaX, 'evt.detail', evt.detail);
-  // if (evt.detail) deltaY = evt.detail * 40;
-  const moveY = (vertical) => {
-    if (vertical > 0) {
-      // up
-      const ri = data.scroll.ri + 1;
-      if (ri < rows.len) {
-        const rh = loopValue(ri, i => rows.getHeight(i));
-        verticalScrollbar.move({ top: top + rh - 1 });
+  const { deltaX = 0, deltaY = 0, detail = 0 } = evt;
+  const wheelY = /Firefox/i.test(window.navigator.userAgent) && detail ? detail : deltaY;
+  if (Math.abs(deltaX) > Math.abs(wheelY)) {
+    this.pendingWheelDeltaX = (this.pendingWheelDeltaX || 0) + deltaX;
+  } else {
+    this.pendingWheelDeltaY = (this.pendingWheelDeltaY || 0) + wheelY;
+  }
+  if (this.wheelFrameId) return;
+  this.wheelFrameId = requestFrame(() => {
+    this.wheelFrameId = 0;
+    const { verticalScrollbar, horizontalScrollbar, data } = this;
+    const { rows, cols } = data;
+    const loopValue = (ii, vFunc) => {
+      let i = ii;
+      let v = 0;
+      do {
+        v = vFunc(i);
+        i += 1;
+      } while (v <= 0);
+      return v;
+    };
+    const moveY = (vertical) => {
+      const { top } = verticalScrollbar.scroll();
+      if (vertical > 0) {
+        const ri = data.scroll.ri + 1;
+        if (ri < rows.len) {
+          const rh = loopValue(ri, i => rows.getHeight(i));
+          verticalScrollbar.move({ top: top + rh - 1 });
+        }
+      } else {
+        const ri = data.scroll.ri - 1;
+        if (ri >= 0) {
+          const rh = loopValue(ri, i => rows.getHeight(i));
+          verticalScrollbar.move({ top: ri === 0 ? 0 : top - rh });
+        }
       }
-    } else {
-      // down
-      const ri = data.scroll.ri - 1;
-      if (ri >= 0) {
-        const rh = loopValue(ri, i => rows.getHeight(i));
-        verticalScrollbar.move({ top: ri === 0 ? 0 : top - rh });
+    };
+    const moveX = (horizontal) => {
+      const { left } = horizontalScrollbar.scroll();
+      if (horizontal > 0) {
+        const ci = data.scroll.ci + 1;
+        if (ci < cols.len) {
+          const cw = loopValue(ci, i => cols.getWidth(i));
+          horizontalScrollbar.move({ left: left + cw - 1 });
+        }
+      } else {
+        const ci = data.scroll.ci - 1;
+        if (ci >= 0) {
+          const cw = loopValue(ci, i => cols.getWidth(i));
+          horizontalScrollbar.move({ left: ci === 0 ? 0 : left - cw });
+        }
       }
+    };
+    const xSteps = Math.min(Math.max(Math.ceil(Math.abs(this.pendingWheelDeltaX || 0) / 40), 1), 5);
+    const ySteps = Math.min(Math.max(Math.ceil(Math.abs(this.pendingWheelDeltaY || 0) / 40), 1), 5);
+    if (this.pendingWheelDeltaX) {
+      for (let i = 0; i < xSteps; i += 1) moveX(this.pendingWheelDeltaX);
+      this.pendingWheelDeltaX = 0;
     }
-  };
-
-  // deltaX for Mac horizontal scroll
-  const moveX = (horizontal) => {
-    if (horizontal > 0) {
-      // left
-      const ci = data.scroll.ci + 1;
-      if (ci < cols.len) {
-        const cw = loopValue(ci, i => cols.getWidth(i));
-        horizontalScrollbar.move({ left: left + cw - 1 });
-      }
-    } else {
-      // right
-      const ci = data.scroll.ci - 1;
-      if (ci >= 0) {
-        const cw = loopValue(ci, i => cols.getWidth(i));
-        horizontalScrollbar.move({ left: ci === 0 ? 0 : left - cw });
-      }
+    if (this.pendingWheelDeltaY) {
+      for (let i = 0; i < ySteps; i += 1) moveY(this.pendingWheelDeltaY);
+      this.pendingWheelDeltaY = 0;
     }
-  };
-  const tempY = Math.abs(deltaY);
-  const tempX = Math.abs(deltaX);
-  const temp = Math.max(tempY, tempX);
-  // console.log('event:', evt);
-  // detail for windows/mac firefox vertical scroll
-  if (/Firefox/i.test(window.navigator.userAgent)) throttle(moveY(evt.detail), 50);
-  if (temp === tempX) throttle(moveX(deltaX), 50);
-  if (temp === tempY) throttle(moveY(deltaY), 50);
+  });
 }
 
 function overlayerTouch(direction, distance) {
