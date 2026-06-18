@@ -4,12 +4,32 @@ H5 mobile spreadsheet demo based on `x-data-spreadsheet`.
 
 ## Features
 
-- Renders Excel-like grid with `x-data-spreadsheet`
+- Renders Excel-like grid with vendored `x-data-spreadsheet` source
 - Mobile bottom cell editor
 - Text, number, and date editing
 - Cell value commit back to spreadsheet
 - Pinch-to-zoom gesture layer
 - Keyboard offset handling with `visualViewport`
+- Mobile long-press cell menu
+
+## Maintained Spreadsheet Source
+
+The spreadsheet engine source is vendored under:
+
+```text
+src/vendor/x-spreadsheet
+```
+
+This lets us patch mobile-specific behavior directly instead of treating
+`x-data-spreadsheet` as a black-box dependency.
+
+Current mobile patches:
+
+- Multi-touch is ignored by the internal touch scroller so the outer pinch zoom can work.
+- Internal touch scrolling no longer always calls `preventDefault`.
+- Built-in desktop editor is disabled in mobile mode.
+- Desktop keyboard input and paste handlers are disabled in mobile mode.
+- The app uses its own bottom cell editor and long-press menu.
 
 ## Local Preview
 

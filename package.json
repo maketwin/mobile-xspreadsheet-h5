@@ -10,8 +10,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-legacy": "^5.4.3",
-    "vite": "^5.4.11",
-    "x-data-spreadsheet": "^1.1.9"
+    "vite": "^5.4.11"
   },
   "devDependencies": {
     "less": "^4.6.6",

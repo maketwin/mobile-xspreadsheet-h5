@@ -1,5 +1,4 @@
-import Spreadsheet from 'x-data-spreadsheet';
-import 'x-data-spreadsheet/dist/xspreadsheet.css';
+import Spreadsheet from './vendor/x-spreadsheet';
 import './styles.css';
 
 const app = document.querySelector('#app');
@@ -165,6 +164,7 @@ function buildSheetData() {
 function initSpreadsheet() {
   state.spreadsheet = new Spreadsheet('#xspreadsheet', {
     mode: 'edit',
+    mobile: true,
     showToolbar: false,
     showContextmenu: false,
     showBottomBar: false,
