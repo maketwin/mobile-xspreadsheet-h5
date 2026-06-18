@@ -95,9 +95,11 @@ const state = {
   baseScale: 1,
   pinchStartDistance: 0,
   pointerCache: new Map(),
+  isPinching: false,
   keyboardOffset: 0,
   editorHeight: 132,
   viewportRaf: 0,
+  viewportTimer: 0,
   longPressTimer: 0,
   longPressStart: null,
   longPressPointerId: null,
@@ -228,6 +230,15 @@ function normalizeDate(text) {
   return '2026-06-17';
 }
 
+function focusEditorControl(control) {
+  if (!control) return;
+  control.focus({ preventScroll: true });
+  if (control === els.cellInput) {
+    const end = control.value.length;
+    control.setSelectionRange(end, end);
+  }
+}
+
 function setEditorType(type, focus = true) {
   state.editorType = type;
   document.documentElement.dataset.editorType = type;
@@ -237,9 +248,10 @@ function setEditorType(type, focus = true) {
   els.cellInput.inputMode = type === 'number' ? 'decimal' : 'text';
   scheduleViewportUpdate();
   if (focus) {
+    const target = type === 'date' ? els.dateInput : els.cellInput;
+    focusEditorControl(target);
     requestAnimationFrame(() => {
-      if (type === 'date') els.dateInput.focus();
-      else els.cellInput.focus();
+      focusEditorControl(target);
       scheduleViewportUpdate();
       scheduleViewportUpdate(180);
     });
@@ -261,6 +273,7 @@ function commitValue(value) {
   updateSelection({ text: value }, ri, ci);
   blurEditors();
   hideLongPressMenu();
+  scheduleViewportUpdate();
 }
 
 function blurEditors() {
@@ -291,14 +304,14 @@ function clearSelectedCell() {
   showGestureTip('已清空当前单元格');
 }
 
-function setScale(nextScale) {
+function setScale(nextScale, { immediate = true } = {}) {
   state.scale = Math.min(1.7, Math.max(0.72, nextScale));
   els.scaleLayer.style.transform = `scale(${state.scale})`;
   els.scaleLayer.style.width = `${100 / state.scale}%`;
   els.scaleLayer.style.height = `${100 / state.scale}%`;
   els.zoomText.textContent = `${Math.round(state.scale * 100)}%`;
-  scheduleViewportUpdate();
-  scheduleViewportUpdate(120);
+  hideLongPressMenu();
+  scheduleViewportUpdate(immediate ? 0 : 90);
 }
 
 function distance(a, b) {
@@ -317,6 +330,7 @@ function onPointerDown(event) {
     const points = [...state.pointerCache.values()];
     state.pinchStartDistance = distance(points[0], points[1]);
     state.baseScale = state.scale;
+    state.isPinching = true;
     els.gestureLayer.classList.add('pinching');
     els.gestureTip.classList.add('show');
   }
@@ -336,13 +350,15 @@ function onPointerMove(event) {
   const points = [...state.pointerCache.values()];
   const nextDistance = distance(points[0], points[1]);
   if (!state.pinchStartDistance) return;
-  setScale(state.baseScale * (nextDistance / state.pinchStartDistance));
+  setScale(state.baseScale * (nextDistance / state.pinchStartDistance), { immediate: false });
 }
 
 function onPointerUp(event) {
   state.pointerCache.delete(event.pointerId);
   if (state.longPressPointerId === event.pointerId) cancelLongPress();
   if (state.pointerCache.size < 2) {
+    if (state.isPinching) scheduleViewportUpdate();
+    state.isPinching = false;
     els.gestureLayer.classList.remove('pinching');
     setTimeout(() => els.gestureTip.classList.remove('show'), 700);
   }
@@ -372,7 +388,7 @@ function syncLongPressMenuContent() {
 }
 
 function showLongPressMenu(clientX, clientY) {
-  if (state.pointerCache.size > 1) return;
+  if (state.pointerCache.size > 1 || state.isPinching) return;
   syncLongPressMenuContent();
   const shellRect = els.appShell.getBoundingClientRect();
   els.longPressMenu.classList.remove('hidden');
@@ -447,9 +463,15 @@ function updateEditorMetrics() {
 
 function scheduleViewportUpdate(delay = 0) {
   if (delay > 0) {
-    window.setTimeout(() => scheduleViewportUpdate(), delay);
+    window.clearTimeout(state.viewportTimer);
+    state.viewportTimer = window.setTimeout(() => {
+      state.viewportTimer = 0;
+      scheduleViewportUpdate();
+    }, delay);
     return;
   }
+  window.clearTimeout(state.viewportTimer);
+  state.viewportTimer = 0;
   cancelAnimationFrame(state.viewportRaf);
   state.viewportRaf = requestAnimationFrame(() => {
     const scrollLeft = els.gestureLayer.scrollLeft;
@@ -458,7 +480,9 @@ function scheduleViewportUpdate(delay = 0) {
     const size = getSheetViewportSize();
     els.scaleLayer.style.minWidth = `${size.width}px`;
     els.scaleLayer.style.minHeight = `${size.height}px`;
-    if (typeof state.spreadsheet?.reload === 'function') {
+    if (typeof state.spreadsheet?.resize === 'function') {
+      state.spreadsheet.resize();
+    } else if (typeof state.spreadsheet?.reload === 'function') {
       state.spreadsheet.reload();
     } else {
       state.spreadsheet?.reRender();

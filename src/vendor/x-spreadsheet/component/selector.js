@@ -24,7 +24,6 @@ class SelectorElement {
           this.inputChange(evt.target.value);
         });
       this.el.child(this.hideInputDiv = h('div', 'hide-input').child(this.hideInput));
-      this.el.child(this.hideInputDiv = h('div', 'hide-input').child(this.hideInput));
     }
     startZIndex += 1;
   }
@@ -197,7 +196,7 @@ export default class Selector {
   constructor(data) {
     this.inputChange = () => {};
     this.data = data;
-    this.br = new SelectorElement(true);
+    this.br = new SelectorElement(data.settings.mobile !== true);
     this.t = new SelectorElement();
     this.l = new SelectorElement();
     this.tl = new SelectorElement();

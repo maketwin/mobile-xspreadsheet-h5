@@ -105,6 +105,15 @@ class Spreadsheet {
     return this;
   }
 
+  reload() {
+    this.sheet.reload();
+    return this;
+  }
+
+  resize() {
+    return this.reload();
+  }
+
   on(eventName, func) {
     this.sheet.on(eventName, func);
     return this;

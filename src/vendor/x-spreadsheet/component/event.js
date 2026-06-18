@@ -54,7 +54,12 @@ function calTouchDirection(spanx, spany, evt, cb) {
   }
 }
 // cb = (direction, distance) => {}
-export function bindTouch(target, { move, end, shouldPreventDefault = true }) {
+export function bindTouch(target, {
+  start,
+  move,
+  end,
+  shouldPreventDefault = true,
+}) {
   let startx = 0;
   let starty = 0;
   let tracking = false;
@@ -67,10 +72,11 @@ export function bindTouch(target, { move, end, shouldPreventDefault = true }) {
     startx = pageX;
     starty = pageY;
     tracking = true;
+    if (start) start(evt);
   }, { passive: true });
   bind(target, 'touchmove', (evt) => {
     if (!move || !tracking || evt.touches.length !== 1) return;
-    const { pageX, pageY } = evt.changedTouches[0];
+    const { pageX, pageY } = evt.touches[0];
     const spanx = pageX - startx;
     const spany = pageY - starty;
     if (Math.abs(spanx) > 10 || Math.abs(spany) > 10) {
