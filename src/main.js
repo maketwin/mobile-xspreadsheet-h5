@@ -104,6 +104,7 @@ const state = {
   editorHeight: 132,
   viewportRaf: 0,
   viewportTimer: 0,
+  keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
   longPressTimer: 0,
@@ -628,13 +629,24 @@ function syncKeyboardOffset() {
   const shellHeight = els.appShell.clientHeight || window.innerHeight;
   const viewportAlreadyShrunk = mobileViewport && vv && shellHeight <= vv.height + 2;
   const offset = viewportAlreadyShrunk ? 0 : rawOffset;
+  const visibleHeight = mobileViewport && vv ? vv.height : window.innerHeight;
   state.keyboardOffset = offset;
   document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
-  document.documentElement.classList.toggle('keyboard-open', mobileViewport && (offset > 80 || (vv && vv.height < window.innerHeight - 80)));
+  document.documentElement.style.setProperty('--visible-height', `${Math.round(visibleHeight)}px`);
+  const editorFocused = document.activeElement === els.cellInput || document.activeElement === els.dateInput;
+  document.documentElement.classList.toggle('keyboard-open', mobileViewport && (editorFocused || offset > 80 || (vv && vv.height < window.innerHeight - 80)));
   if (mobileViewport && window.scrollY !== 0) {
     window.scrollTo(0, 0);
   }
   scheduleViewportUpdate();
+}
+
+function scheduleKeyboardSync() {
+  state.keyboardSyncTimers.forEach(timer => window.clearTimeout(timer));
+  state.keyboardSyncTimers = [0, 80, 180, 320].map(delay => window.setTimeout(() => {
+    syncKeyboardOffset();
+    scheduleViewportUpdate(0, true);
+  }, delay));
 }
 
 function getVisibleAppHeight() {
@@ -764,18 +776,24 @@ function bindEvents() {
   });
   els.cellInput.addEventListener('focus', () => {
     hideLongPressMenu();
-    scheduleViewportUpdate();
-    scheduleViewportUpdate(260);
+    document.documentElement.classList.add('keyboard-open');
+    scheduleKeyboardSync();
   });
-  els.cellInput.addEventListener('blur', () => scheduleViewportUpdate(80));
+  els.cellInput.addEventListener('blur', () => {
+    scheduleKeyboardSync();
+    scheduleViewportUpdate(80, true);
+  });
   els.cellInput.addEventListener('compositionstart', () => els.cellInput.dataset.composing = 'true');
   els.cellInput.addEventListener('compositionend', () => els.cellInput.dataset.composing = 'false');
   els.dateInput.addEventListener('focus', () => {
     hideLongPressMenu();
-    scheduleViewportUpdate();
-    scheduleViewportUpdate(260);
+    document.documentElement.classList.add('keyboard-open');
+    scheduleKeyboardSync();
   });
-  els.dateInput.addEventListener('blur', () => scheduleViewportUpdate(80));
+  els.dateInput.addEventListener('blur', () => {
+    scheduleKeyboardSync();
+    scheduleViewportUpdate(80, true);
+  });
 
   els.gestureLayer.addEventListener('pointerdown', onPointerDown, { passive: true });
   els.gestureLayer.addEventListener('pointermove', onPointerMove, { passive: false });
