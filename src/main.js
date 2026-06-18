@@ -626,13 +626,9 @@ function syncKeyboardOffset() {
   const vv = window.visualViewport;
   const mobileViewport = window.matchMedia('(max-width: 739px)').matches;
   const rawOffset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
-  const shellHeight = els.appShell.clientHeight || window.innerHeight;
-  const viewportAlreadyShrunk = mobileViewport && vv && shellHeight <= vv.height + 2;
-  const offset = viewportAlreadyShrunk ? 0 : rawOffset;
-  const visibleHeight = mobileViewport && vv ? vv.height : window.innerHeight;
+  const offset = rawOffset;
   state.keyboardOffset = offset;
   document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
-  document.documentElement.style.setProperty('--visible-height', `${Math.round(visibleHeight)}px`);
   const editorFocused = document.activeElement === els.cellInput || document.activeElement === els.dateInput;
   document.documentElement.classList.toggle('keyboard-open', mobileViewport && (editorFocused || offset > 80 || (vv && vv.height < window.innerHeight - 80)));
   if (mobileViewport && window.scrollY !== 0) {
