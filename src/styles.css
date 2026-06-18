@@ -42,7 +42,8 @@ button {
   display: grid;
   grid-template-rows: 64px minmax(0, 1fr);
   background: #fff;
-  position: relative;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -381,6 +382,8 @@ button {
   }
 
   .mobile-excel {
+    position: relative;
+    inset: auto;
     width: 390px;
     height: 844px;
     max-height: calc(100vh - 30px);

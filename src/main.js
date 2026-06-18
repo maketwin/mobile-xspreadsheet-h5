@@ -426,17 +426,24 @@ function showGestureTip(message) {
 
 function syncKeyboardOffset() {
   const vv = window.visualViewport;
-  const offset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  const mobileViewport = window.matchMedia('(max-width: 739px)').matches;
+  const rawOffset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  const shellHeight = els.appShell.clientHeight || window.innerHeight;
+  const viewportAlreadyShrunk = mobileViewport && vv && shellHeight <= vv.height + 2;
+  const offset = viewportAlreadyShrunk ? 0 : rawOffset;
   state.keyboardOffset = offset;
   document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
-  document.documentElement.classList.toggle('keyboard-open', offset > 80);
+  document.documentElement.classList.toggle('keyboard-open', mobileViewport && (offset > 80 || (vv && vv.height < window.innerHeight - 80)));
+  if (mobileViewport && window.scrollY !== 0) {
+    window.scrollTo(0, 0);
+  }
   scheduleViewportUpdate();
 }
 
 function getVisibleAppHeight() {
   const vv = window.visualViewport;
   if (vv && window.matchMedia('(max-width: 739px)').matches) {
-    return vv.height;
+    return Math.min(vv.height, els.appShell.clientHeight || vv.height);
   }
   return els.appShell.clientHeight || window.innerHeight;
 }
