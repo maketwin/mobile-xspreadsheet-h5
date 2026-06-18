@@ -25,6 +25,21 @@ app.innerHTML = `
         <div id="xspreadsheet"></div>
       </div>
       <div class="gesture-tip" id="gestureTip">双指捏合可缩放，单指拖动可浏览表格</div>
+      <div class="long-press-menu hidden" id="longPressMenu" role="menu" aria-label="单元格快捷菜单">
+        <div class="menu-title">
+          <strong id="menuCellAddress">C2</strong>
+          <span id="menuCellText">郭绵翔</span>
+        </div>
+        <div class="menu-actions">
+          <button type="button" data-menu-action="edit">编辑</button>
+          <button type="button" data-menu-action="copy">复制</button>
+          <button type="button" data-menu-action="clear">清空</button>
+          <button type="button" data-menu-action="text">文本</button>
+          <button type="button" data-menu-action="date">日期</button>
+          <button type="button" data-menu-action="zoom-in">放大</button>
+          <button type="button" data-menu-action="zoom-out">缩小</button>
+        </div>
+      </div>
     </main>
 
     <section class="cell-editor" id="cellEditor" aria-label="移动端单元格编辑器">
@@ -61,6 +76,9 @@ const els = {
   scaleLayer: document.querySelector('#scaleLayer'),
   zoomText: document.querySelector('#zoomText'),
   gestureTip: document.querySelector('#gestureTip'),
+  longPressMenu: document.querySelector('#longPressMenu'),
+  menuCellAddress: document.querySelector('#menuCellAddress'),
+  menuCellText: document.querySelector('#menuCellText'),
   cellEditor: document.querySelector('#cellEditor'),
   cellAddress: document.querySelector('#cellAddress'),
   cellType: document.querySelector('#cellType'),
@@ -81,6 +99,9 @@ const state = {
   keyboardOffset: 0,
   editorHeight: 132,
   viewportRaf: 0,
+  longPressTimer: 0,
+  longPressStart: null,
+  longPressPointerId: null,
 };
 
 const columns = ['项目组', '版本', '负责人', '系统', '需求说明', '日期', '状态'];
@@ -188,6 +209,7 @@ function updateSelection(cell, ri, ci) {
   } else {
     setEditorType('text', false);
   }
+  syncLongPressMenuContent();
 }
 
 function toColumnName(index) {
@@ -238,6 +260,7 @@ function commitValue(value) {
   state.spreadsheet.cellText(ri, ci, value).reRender();
   updateSelection({ text: value }, ri, ci);
   blurEditors();
+  hideLongPressMenu();
 }
 
 function blurEditors() {
@@ -249,6 +272,23 @@ function cancelEdit() {
   els.cellInput.value = state.selected.text;
   els.dateInput.value = normalizeDate(state.selected.text);
   blurEditors();
+}
+
+async function copySelectedCell() {
+  const text = state.selected.text ?? '';
+  try {
+    await navigator.clipboard.writeText(text);
+    showGestureTip('已复制单元格内容');
+  } catch {
+    els.cellInput.value = text;
+    els.cellInput.select();
+    showGestureTip('已选中内容，可手动复制');
+  }
+}
+
+function clearSelectedCell() {
+  commitValue('');
+  showGestureTip('已清空当前单元格');
 }
 
 function setScale(nextScale) {
@@ -266,8 +306,14 @@ function distance(a, b) {
 }
 
 function onPointerDown(event) {
+  if (event.target.closest('.long-press-menu')) return;
+  hideLongPressMenu();
   state.pointerCache.set(event.pointerId, event);
+  if (state.pointerCache.size === 1 && (event.pointerType !== 'mouse' || event.button === 0)) {
+    startLongPress(event);
+  }
   if (state.pointerCache.size === 2) {
+    cancelLongPress();
     const points = [...state.pointerCache.values()];
     state.pinchStartDistance = distance(points[0], points[1]);
     state.baseScale = state.scale;
@@ -279,6 +325,11 @@ function onPointerDown(event) {
 function onPointerMove(event) {
   if (!state.pointerCache.has(event.pointerId)) return;
   state.pointerCache.set(event.pointerId, event);
+  if (state.longPressPointerId === event.pointerId && state.longPressStart) {
+    const dx = event.clientX - state.longPressStart.x;
+    const dy = event.clientY - state.longPressStart.y;
+    if (Math.hypot(dx, dy) > 10) cancelLongPress();
+  }
   if (state.pointerCache.size !== 2) return;
 
   event.preventDefault();
@@ -290,10 +341,71 @@ function onPointerMove(event) {
 
 function onPointerUp(event) {
   state.pointerCache.delete(event.pointerId);
+  if (state.longPressPointerId === event.pointerId) cancelLongPress();
   if (state.pointerCache.size < 2) {
     els.gestureLayer.classList.remove('pinching');
     setTimeout(() => els.gestureTip.classList.remove('show'), 700);
   }
+}
+
+function startLongPress(event) {
+  cancelLongPress();
+  state.longPressPointerId = event.pointerId;
+  state.longPressStart = { x: event.clientX, y: event.clientY };
+  state.longPressTimer = window.setTimeout(() => {
+    state.longPressTimer = 0;
+    showLongPressMenu(event.clientX, event.clientY);
+  }, 550);
+}
+
+function cancelLongPress() {
+  window.clearTimeout(state.longPressTimer);
+  state.longPressTimer = 0;
+  state.longPressPointerId = null;
+  state.longPressStart = null;
+}
+
+function syncLongPressMenuContent() {
+  if (!els.menuCellAddress || !els.menuCellText) return;
+  els.menuCellAddress.textContent = `${toColumnName(state.selected.ci)}${state.selected.ri + 1}`;
+  els.menuCellText.textContent = state.selected.text || '空单元格';
+}
+
+function showLongPressMenu(clientX, clientY) {
+  if (state.pointerCache.size > 1) return;
+  syncLongPressMenuContent();
+  const shellRect = els.appShell.getBoundingClientRect();
+  els.longPressMenu.classList.remove('hidden');
+  els.longPressMenu.classList.add('show');
+
+  const menuRect = els.longPressMenu.getBoundingClientRect();
+  const padding = 10;
+  const x = Math.min(
+    Math.max(clientX - shellRect.left - menuRect.width / 2, padding),
+    Math.max(padding, shellRect.width - menuRect.width - padding),
+  );
+  const y = Math.min(
+    Math.max(clientY - shellRect.top + 12, padding),
+    Math.max(padding, shellRect.height - state.editorHeight - menuRect.height - padding),
+  );
+
+  els.longPressMenu.style.left = `${Math.round(x)}px`;
+  els.longPressMenu.style.top = `${Math.round(y)}px`;
+  showGestureTip('长按菜单已打开');
+}
+
+function hideLongPressMenu() {
+  els.longPressMenu.classList.remove('show');
+  els.longPressMenu.classList.add('hidden');
+}
+
+function showGestureTip(message) {
+  els.gestureTip.textContent = message;
+  els.gestureTip.classList.add('show');
+  window.setTimeout(() => {
+    els.gestureTip.classList.remove('show');
+    els.gestureTip.textContent = '双指捏合可缩放，单指拖动可浏览表格';
+  }, 1200);
 }
 
 function syncKeyboardOffset() {
@@ -361,6 +473,13 @@ function bindEvents() {
     els.cellEditor.addEventListener(eventName, (event) => {
       event.stopPropagation();
     });
+    els.longPressMenu.addEventListener(eventName, (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('.sheet-viewport')) event.preventDefault();
   });
 
   document.querySelector('#saveEdit').addEventListener('click', saveText);
@@ -379,6 +498,21 @@ function bindEvents() {
     button.addEventListener('click', () => setEditorType(button.dataset.editor, true));
   });
 
+  els.longPressMenu.querySelectorAll('[data-menu-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const action = button.dataset.menuAction;
+      if (action === 'edit') setEditorType(state.editorType, true);
+      if (action === 'copy') await copySelectedCell();
+      if (action === 'clear') clearSelectedCell();
+      if (action === 'text') setEditorType('text', true);
+      if (action === 'date') setEditorType('date', true);
+      if (action === 'zoom-in') setScale(state.scale + 0.1);
+      if (action === 'zoom-out') setScale(state.scale - 0.1);
+      hideLongPressMenu();
+      scheduleViewportUpdate(120);
+    });
+  });
+
   els.cellInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && els.cellInput.dataset.composing !== 'true') {
       event.preventDefault();
@@ -386,6 +520,7 @@ function bindEvents() {
     }
   });
   els.cellInput.addEventListener('focus', () => {
+    hideLongPressMenu();
     scheduleViewportUpdate();
     scheduleViewportUpdate(260);
   });
@@ -393,6 +528,7 @@ function bindEvents() {
   els.cellInput.addEventListener('compositionstart', () => els.cellInput.dataset.composing = 'true');
   els.cellInput.addEventListener('compositionend', () => els.cellInput.dataset.composing = 'false');
   els.dateInput.addEventListener('focus', () => {
+    hideLongPressMenu();
     scheduleViewportUpdate();
     scheduleViewportUpdate(260);
   });
