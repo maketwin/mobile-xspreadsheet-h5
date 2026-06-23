@@ -107,9 +107,12 @@ const state = {
   keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
+  tapStart: null,
+  lastTap: null,
   longPressTimer: 0,
   longPressStart: null,
   longPressPointerId: null,
+  longPressTriggered: false,
 };
 
 const columns = ['项目组', '版本', '负责人', '系统', '需求说明', '日期', '状态'];
@@ -482,6 +485,13 @@ function cancelEdit() {
   blurEditors();
 }
 
+function enterEditMode() {
+  hideLongPressMenu();
+  setEditorType(state.editorType, true);
+  scheduleKeyboardSync();
+  scheduleViewportUpdate(180, true);
+}
+
 async function copySelectedCell() {
   const text = state.selected.text ?? '';
   try {
@@ -517,6 +527,16 @@ function onPointerDown(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
   state.pointerCache.set(event.pointerId, event);
+  state.tapStart = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    time: performance.now(),
+    moved: false,
+  };
+  if (event.pointerType !== 'mouse' || event.button === 0) {
+    blurEditors();
+  }
   if (state.pointerCache.size === 1 && (event.pointerType !== 'mouse' || event.button === 0)) {
     startLongPress(event);
   }
@@ -537,7 +557,10 @@ function onPointerMove(event) {
   if (state.longPressPointerId === event.pointerId && state.longPressStart) {
     const dx = event.clientX - state.longPressStart.x;
     const dy = event.clientY - state.longPressStart.y;
-    if (Math.hypot(dx, dy) > 10) cancelLongPress();
+    if (Math.hypot(dx, dy) > 10) {
+      cancelLongPress();
+      if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
+    }
   }
   if (state.pointerCache.size !== 2) return;
 
@@ -552,6 +575,7 @@ function onPointerMove(event) {
 }
 
 function onPointerUp(event) {
+  handleTapEnd(event);
   state.pointerCache.delete(event.pointerId);
   if (state.longPressPointerId === event.pointerId) cancelLongPress();
   if (state.pointerCache.size < 2) {
@@ -562,12 +586,53 @@ function onPointerUp(event) {
   }
 }
 
+function handleTapEnd(event) {
+  const tapStart = state.tapStart;
+  state.tapStart = null;
+  if (!tapStart || tapStart.pointerId !== event.pointerId) return;
+  if (state.isPinching || state.pointerCache.size > 1 || state.longPressTriggered) {
+    state.lastTap = null;
+    return;
+  }
+
+  const now = performance.now();
+  const dx = event.clientX - tapStart.x;
+  const dy = event.clientY - tapStart.y;
+  const distanceMoved = Math.hypot(dx, dy);
+  const isTap = !tapStart.moved && distanceMoved <= 10 && now - tapStart.time < 420;
+  if (!isTap) return;
+
+  const lastTap = state.lastTap;
+  const isDoubleTap = lastTap
+    && now - lastTap.time < 320
+    && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 24
+    && lastTap.ri === state.selected.ri
+    && lastTap.ci === state.selected.ci;
+
+  if (isDoubleTap) {
+    state.lastTap = null;
+    enterEditMode();
+    return;
+  }
+
+  state.lastTap = {
+    time: now,
+    x: event.clientX,
+    y: event.clientY,
+    ri: state.selected.ri,
+    ci: state.selected.ci,
+  };
+}
+
 function startLongPress(event) {
   cancelLongPress();
+  state.longPressTriggered = false;
   state.longPressPointerId = event.pointerId;
   state.longPressStart = { x: event.clientX, y: event.clientY };
   state.longPressTimer = window.setTimeout(() => {
     state.longPressTimer = 0;
+    state.longPressTriggered = true;
+    state.lastTap = null;
     showLongPressMenu(event.clientX, event.clientY);
   }, 550);
 }
@@ -795,6 +860,10 @@ function bindEvents() {
   els.gestureLayer.addEventListener('pointermove', onPointerMove, { passive: false });
   els.gestureLayer.addEventListener('pointerup', onPointerUp, { passive: true });
   els.gestureLayer.addEventListener('pointercancel', onPointerUp, { passive: true });
+  els.gestureLayer.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    enterEditMode();
+  });
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncKeyboardOffset);
