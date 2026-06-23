@@ -44,7 +44,7 @@ app.innerHTML = `
       </div>
     </main>
 
-    <section class="cell-editor" id="cellEditor" aria-label="移动端单元格编辑器">
+    <section class="cell-editor" id="cellEditor" aria-label="移动端单元格编辑器" style="display: none;">
       <div class="editor-meta">
         <span id="cellAddress">未选择</span>
         <span id="cellType">文本</span>
@@ -95,6 +95,7 @@ const state = {
   spreadsheet: null,
   selected: { ri: 0, ci: 0, text: '' },
   editorType: 'text',
+  isEditing: false,
   scale: 1,
   baseScale: 1,
   pinchStartDistance: 0,
@@ -437,6 +438,18 @@ function focusEditorControl(control) {
   }
 }
 
+function setEditing(isEditing) {
+  state.isEditing = isEditing;
+  els.cellEditor.style.display = isEditing ? '' : 'none';
+  els.cellEditor.classList.toggle('editing', isEditing);
+  document.documentElement.classList.toggle('editing-cell', isEditing);
+  if (!isEditing) {
+    blurEditors();
+    document.documentElement.classList.remove('keyboard-open');
+  }
+  scheduleViewportUpdate(0, true);
+}
+
 function setEditorType(type, focus = true) {
   state.editorType = type;
   document.documentElement.dataset.editorType = type;
@@ -469,7 +482,7 @@ function commitValue(value) {
   const { ri, ci } = state.selected;
   state.spreadsheet.cellText(ri, ci, value).reRender();
   updateSelection({ text: value }, ri, ci);
-  blurEditors();
+  setEditing(false);
   hideLongPressMenu();
   scheduleViewportUpdate();
 }
@@ -482,11 +495,12 @@ function blurEditors() {
 function cancelEdit() {
   els.cellInput.value = state.selected.text;
   els.dateInput.value = normalizeDate(state.selected.text);
-  blurEditors();
+  setEditing(false);
 }
 
 function enterEditMode() {
   hideLongPressMenu();
+  setEditing(true);
   setEditorType(state.editorType, true);
   scheduleKeyboardSync();
   scheduleViewportUpdate(180, true);
@@ -535,7 +549,7 @@ function onPointerDown(event) {
     moved: false,
   };
   if (event.pointerType !== 'mouse' || event.button === 0) {
-    blurEditors();
+    setEditing(false);
   }
   if (state.pointerCache.size === 1 && (event.pointerType !== 'mouse' || event.button === 0)) {
     startLongPress(event);
@@ -720,7 +734,9 @@ function getVisibleAppHeight() {
 
 function getSheetViewportSize() {
   const topbarHeight = els.topbar.getBoundingClientRect().height || 64;
-  const editorHeight = state.editorHeight || els.cellEditor.getBoundingClientRect().height || 132;
+  const editorHeight = state.isEditing
+    ? (state.editorHeight || els.cellEditor.getBoundingClientRect().height || 132)
+    : 0;
   const appWidth = els.appShell.clientWidth || window.innerWidth;
   const visibleHeight = getVisibleAppHeight();
   const availableHeight = visibleHeight - topbarHeight - editorHeight - 6;
@@ -732,6 +748,12 @@ function getSheetViewportSize() {
 }
 
 function updateEditorMetrics() {
+  if (!state.isEditing) {
+    state.editorHeight = 0;
+    document.documentElement.style.setProperty('--editor-height', '0px');
+    els.gestureLayer.style.paddingBottom = '0px';
+    return;
+  }
   const rect = els.cellEditor.getBoundingClientRect();
   state.editorHeight = Math.ceil(rect.height);
   document.documentElement.style.setProperty('--editor-height', `${state.editorHeight}px`);
