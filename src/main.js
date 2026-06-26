@@ -110,6 +110,7 @@ const state = {
   perfMetrics: null,
   tapStart: null,
   lastTap: null,
+  rangeDrag: null,
   longPressTimer: 0,
   longPressStart: null,
   longPressPointerId: null,
@@ -388,6 +389,9 @@ function initSpreadsheet() {
   state.spreadsheet.on('cell-selected', (cell, ri, ci) => {
     updateSelection(cell, ri, ci);
   });
+  state.spreadsheet.on('cells-selected', (cell, range) => {
+    updateRangeSelection(cell, range);
+  });
   state.spreadsheet.on('cell-edited', (text, ri, ci) => {
     updateSelection({ text }, ri, ci);
   });
@@ -396,10 +400,21 @@ function initSpreadsheet() {
   scheduleViewportUpdate();
 }
 
+function formatCellAddress(ri, ci) {
+  return `${toColumnName(ci)}${ri + 1}`;
+}
+
+function formatRangeAddress(range) {
+  if (!range) return '未选择';
+  const start = formatCellAddress(range.sri, range.sci);
+  const end = formatCellAddress(range.eri, range.eci);
+  return start === end ? start : `${start}:${end}`;
+}
+
 function updateSelection(cell, ri, ci) {
   const text = cell?.text ?? '';
-  state.selected = { ri, ci, text };
-  els.cellAddress.textContent = `${toColumnName(ci)}${ri + 1}`;
+  state.selected = { ri, ci, text, range: null };
+  els.cellAddress.textContent = formatCellAddress(ri, ci);
   els.cellInput.value = text;
   els.dateInput.value = normalizeDate(text);
 
@@ -410,6 +425,20 @@ function updateSelection(cell, ri, ci) {
   } else {
     setEditorType('text', false);
   }
+  syncLongPressMenuContent();
+}
+
+function updateRangeSelection(cell, range) {
+  const text = cell?.text ?? '';
+  state.selected = {
+    ri: range.sri,
+    ci: range.sci,
+    text,
+    range,
+  };
+  els.cellAddress.textContent = formatRangeAddress(range);
+  els.cellInput.value = text;
+  els.dateInput.value = normalizeDate(text);
   syncLongPressMenuContent();
 }
 
@@ -537,6 +566,13 @@ function distance(a, b) {
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
+function isSelectedCellAtPoint(event) {
+  const cellRect = state.spreadsheet?.sheet?.cellRectByClientPoint?.(event.clientX, event.clientY);
+  if (!cellRect || cellRect.ri < 0 || cellRect.ci < 0) return false;
+  if (state.selected.range?.includes?.(cellRect.ri, cellRect.ci)) return true;
+  return cellRect.ri === state.selected.ri && cellRect.ci === state.selected.ci;
+}
+
 function onPointerDown(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
@@ -547,6 +583,13 @@ function onPointerDown(event) {
     y: event.clientY,
     time: performance.now(),
     moved: false,
+  };
+  state.rangeDrag = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    active: false,
+    canStart: isSelectedCellAtPoint(event),
   };
   if (event.pointerType !== 'mouse' || event.button === 0) {
     setEditing(false);
@@ -568,6 +611,7 @@ function onPointerDown(event) {
 function onPointerMove(event) {
   if (!state.pointerCache.has(event.pointerId)) return;
   state.pointerCache.set(event.pointerId, event);
+  if (handleRangeDragMove(event)) return;
   if (state.longPressPointerId === event.pointerId && state.longPressStart) {
     const dx = event.clientX - state.longPressStart.x;
     const dy = event.clientY - state.longPressStart.y;
@@ -589,7 +633,8 @@ function onPointerMove(event) {
 }
 
 function onPointerUp(event) {
-  handleTapEnd(event);
+  const wasRangeDragging = finishRangeDrag(event);
+  if (!wasRangeDragging) handleTapEnd(event);
   state.pointerCache.delete(event.pointerId);
   if (state.longPressPointerId === event.pointerId) cancelLongPress();
   if (state.pointerCache.size < 2) {
@@ -598,6 +643,35 @@ function onPointerUp(event) {
     els.gestureLayer.classList.remove('pinching');
     setTimeout(() => els.gestureTip.classList.remove('show'), 700);
   }
+}
+
+function handleRangeDragMove(event) {
+  const drag = state.rangeDrag;
+  if (!drag || drag.pointerId !== event.pointerId || !drag.canStart) return false;
+  if (state.pointerCache.size > 1 || state.isPinching) {
+    state.rangeDrag = null;
+    return false;
+  }
+
+  const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
+  if (!drag.active && moved < 14) return false;
+
+  drag.active = true;
+  event.preventDefault();
+  cancelLongPress();
+  state.lastTap = null;
+  if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
+  state.spreadsheet?.sheet?.selectRangeEndByClientPoint?.(event.clientX, event.clientY, true);
+  return true;
+}
+
+function finishRangeDrag(event) {
+  const drag = state.rangeDrag;
+  state.rangeDrag = null;
+  if (!drag || drag.pointerId !== event.pointerId || !drag.active) return false;
+  state.spreadsheet?.sheet?.selectRangeEndByClientPoint?.(event.clientX, event.clientY, false);
+  hideLongPressMenu();
+  return true;
 }
 
 function handleTapEnd(event) {
@@ -660,7 +734,9 @@ function cancelLongPress() {
 
 function syncLongPressMenuContent() {
   if (!els.menuCellAddress || !els.menuCellText) return;
-  els.menuCellAddress.textContent = `${toColumnName(state.selected.ci)}${state.selected.ri + 1}`;
+  els.menuCellAddress.textContent = state.selected.range
+    ? formatRangeAddress(state.selected.range)
+    : formatCellAddress(state.selected.ri, state.selected.ci);
   els.menuCellText.textContent = state.selected.text || '空单元格';
 }
 
