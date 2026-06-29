@@ -14,6 +14,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* prevent iOS auto-zoom on orientation change / font boost */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body,
 #app {
@@ -21,6 +27,8 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* stop scroll chaining: a fling inside the sheet must not scroll the page */
+  overscroll-behavior: none;
   color: var(--ink);
   background: #eef2f7;
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -40,7 +48,8 @@ button {
   height: 100vh;
   height: 100dvh;
   display: grid;
-  grid-template-rows: 64px minmax(0, 1fr);
+  /* top row is auto-sized so it grows with the notch/safe-area inset */
+  grid-template-rows: auto minmax(0, 1fr);
   background: #fff;
   position: fixed;
   inset: 0;
@@ -53,23 +62,35 @@ button {
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  min-height: 56px;
+  /* respect the status-bar / notch on notched devices (viewport-fit=cover) */
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, .96);
   backdrop-filter: blur(12px);
 }
 
 .icon-button {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #202938;
-  font-size: 27px;
+  font-size: 26px;
   line-height: 1;
+  -webkit-touch-callout: none;
+  transition: transform .08s ease, background-color .08s ease;
+}
+
+.icon-button:active,
+.perf-button:active,
+.small-button:active,
+.editor-toolbar button:active,
+.menu-actions button:active {
+  transform: scale(.93);
 }
 
 .icon-button.muted {
@@ -123,6 +144,12 @@ button {
   overflow: hidden;
   background: #fff;
   touch-action: pan-x pan-y;
+  /* contain overscroll so flings at the sheet edge don't bounce the page */
+  overscroll-behavior: contain;
+  /* the grid is canvas-rendered; selecting text here only fights the long-press menu */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   padding-bottom: calc(var(--editor-height) + 10px);
 }
 
@@ -148,6 +175,9 @@ button {
   font-size: 13px;
   width: 100% !important;
   height: 100% !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .x-spreadsheet-toolbar {
@@ -160,6 +190,8 @@ button {
 
 .x-spreadsheet-sheet {
   touch-action: pan-x pan-y;
+  /* momentum scrolling for the internal canvas scroller on iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .x-spreadsheet-bottombar {
@@ -342,7 +374,10 @@ button {
   padding: 0 10px;
   color: #17202a;
   background: #fff;
+  /* 16px prevents iOS auto-zoom on focus; keep selection enabled here */
   font-size: 16px;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #cellInput:focus,
@@ -378,6 +413,7 @@ button {
 
 .editor-toolbar button {
   min-width: 0;
+  min-height: 40px;
   border: 0;
   border-radius: 8px;
   background: #f4f7fb;
@@ -471,5 +507,58 @@ button {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     padding-left: 6px;
     padding-right: 6px;
+  }
+}
+
+/* Landscape on phones: height is scarce, so collapse the top bar and the
+   bottom editor so the grid keeps usable room. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .topbar {
+    min-height: 0;
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: 4px;
+  }
+
+  .topbar {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+
+  .icon-button {
+    width: 36px;
+    height: 32px;
+    font-size: 22px;
+  }
+
+  .title-block strong {
+    font-size: 14px;
+  }
+
+  .editor-meta {
+    height: 22px;
+    padding-top: 3px;
+  }
+
+  .input-row,
+  .date-editor {
+    min-height: 42px;
+    padding-top: 4px;
+    padding-bottom: 5px;
+  }
+
+  #cellInput,
+  #dateInput,
+  .small-button {
+    height: 32px;
+  }
+
+  .editor-toolbar {
+    height: 38px;
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+
+  .editor-toolbar button {
+    min-height: 32px;
+    font-size: 12px;
   }
 }
