@@ -8,7 +8,7 @@
 - 远端仓库：`https://github.com/maketwin/mobile-xspreadsheet-h5`
 - 线上预览：`https://maketwin.github.io/mobile-xspreadsheet-h5/`
 - 当前功能分支：`codex/optimize-mobile-spreadsheet-performance`
-- 当前分支最新功能提交：`dffae4f Polish mobile shell and touch styles`
+- 当前架构方向：不再修改 Excel 基座，移动端能力沉淀为独立 adapter package
 - 当前工作区：提交本文档后应保持干净
 
 ## 阶段 1：H5 Excel 移动端基座
@@ -92,6 +92,9 @@
 - mobile 模式下移除 selector 隐藏 input，避免抢焦点。
 - 顶层 Spreadsheet 暴露 `reload()` / `resize()`，方便外层完整重排。
 
+> 需求变更说明：后续不再继续修改 Excel 基座源码。当前 `src/vendor/x-spreadsheet`
+> 视为既有基座；新增移动端能力应放入独立适配包，通过实例对象、DOM 和事件桥接实现。
+
 ## 阶段 5：性能优化与压测能力
 
 代表提交：
@@ -131,8 +134,8 @@
 - 增加 `isEditing` 状态，底部编辑栏只在编辑态显示。
 - 非编辑态下编辑栏 `display: none`，表格高度释放到完整可用空间。
 - 保存、取消、点击表格其他区域后退出编辑态。
-- 在 vendored `Sheet` 上增加按 client 坐标获取单元格、设置范围终点的公开方法。
-- 外层手势通过内部 selector 能力更新真实选区，不额外画假框。
+- 拖动框选能力改由移动适配包桥接基座运行时实例，不再要求 vendored `Sheet` 新增方法。
+- 外层手势通过适配包更新真实选区，不额外画假框。
 
 ## 阶段 7：移动端外壳与触摸样式整理
 
@@ -155,6 +158,35 @@
 - 增加 `overscroll-behavior`，减少页面橡皮筋/滚动串联。
 - `.gitignore` 忽略 `src_backup-*` 备份目录。
 
+## 阶段 8：移动端适配包化
+
+代表提交：
+
+- 本次包化提交：`Extract mobile adapter package`
+
+变更背景：
+
+- 新需求要求不能继续修改 Excel 基座。
+- 移动端适配能力需要作为一个独立包沉淀，方便未来接入不同 Excel 基座或升级基座版本。
+
+完成内容：
+
+- 新增包目录：`packages/mobile-spreadsheet-adapter`。
+- 包名：`@mobile-excel/x-spreadsheet-adapter`。
+- 提供非侵入式 helper：
+  - `cellRectByClientPoint`
+  - `selectedRangeIncludes`
+  - `selectRangeEndByClientPoint`
+  - `resizeSpreadsheet`
+- demo 的移动端拖动框选改为通过适配包调用，不再要求 `src/vendor/x-spreadsheet` 新增方法。
+- 当前功能分支相对 `origin/main` 不再包含 `src/vendor/x-spreadsheet` 差异。
+
+包边界：
+
+- 允许：读取 spreadsheet 实例运行时对象、读取 DOM 坐标、触发既有事件、调用既有 render/resize 能力。
+- 不允许：修改 Excel 基座源码、fork 内部模块、把移动端 UI 写入基座。
+- 应由宿主提供：底部编辑器 UI、菜单 UI、业务数据保存、权限和埋点。
+
 ## 当前成品能力清单
 
 - Excel 风格 canvas 表格渲染。
@@ -171,6 +203,7 @@
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量性能测试入口。
 - GitHub Pages 自动部署。
+- 移动端适配包骨架。
 
 ## 验证记录
 
@@ -183,15 +216,18 @@
 - 双击单元格显示编辑栏并聚焦输入框。
 - 取消编辑后编辑栏收起。
 - 从 `A2` 拖动到右下后地址显示 `A2:D5`。
-- 拖动框选不会误弹编辑栏或长按菜单。
+- 拖动框选不会误弹编辑栏或长按菜单，并已改为适配包方式实现。
 - 缩放后 canvas 尺寸重新适配。
 - 键盘弹起后不再出现上方大空白。
+- 当前功能分支相对 `origin/main` 无 `src/vendor/x-spreadsheet` 差异。
 
 ## 待合并提交
 
-当前功能分支相对 `origin/main` 还有 3 个功能提交；本文档提交为整理说明，另计：
+当前功能分支相对 `origin/main` 的核心待合并内容：
 
 ```text
+Extract mobile adapter package
+df9f809 Document mobile spreadsheet changes
 dffae4f Polish mobile shell and touch styles
 052f35d Support mobile drag range selection
 41d553a Show mobile editor only while editing

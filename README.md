@@ -31,6 +31,21 @@ Current mobile patches:
 - Desktop keyboard input and paste handlers are disabled in mobile mode.
 - The app uses its own bottom cell editor and long-press menu.
 
+## Mobile Adapter Package
+
+New mobile-specific behavior should live outside the spreadsheet base.
+
+The adapter package is located at:
+
+```text
+packages/mobile-spreadsheet-adapter
+```
+
+It provides non-invasive helpers for mobile adaptation, including client-point
+cell lookup, drag range selection, and spreadsheet resize bridging. The package
+is allowed to read the spreadsheet runtime instance and DOM, but it must not
+modify `src/vendor/x-spreadsheet`.
+
 ## Local Preview
 
 ```bash

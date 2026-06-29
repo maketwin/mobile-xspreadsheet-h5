@@ -1,4 +1,9 @@
 import Spreadsheet from './vendor/x-spreadsheet';
+import {
+  cellRectByClientPoint,
+  resizeSpreadsheet,
+  selectRangeEndByClientPoint,
+} from '../packages/mobile-spreadsheet-adapter/src/index.js';
 import './styles.css';
 
 const app = document.querySelector('#app');
@@ -567,7 +572,7 @@ function distance(a, b) {
 }
 
 function isSelectedCellAtPoint(event) {
-  const cellRect = state.spreadsheet?.sheet?.cellRectByClientPoint?.(event.clientX, event.clientY);
+  const cellRect = cellRectByClientPoint(state.spreadsheet, event.clientX, event.clientY);
   if (!cellRect || cellRect.ri < 0 || cellRect.ci < 0) return false;
   if (state.selected.range?.includes?.(cellRect.ri, cellRect.ci)) return true;
   return cellRect.ri === state.selected.ri && cellRect.ci === state.selected.ci;
@@ -661,7 +666,7 @@ function handleRangeDragMove(event) {
   cancelLongPress();
   state.lastTap = null;
   if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
-  state.spreadsheet?.sheet?.selectRangeEndByClientPoint?.(event.clientX, event.clientY, true);
+  selectRangeEndByClientPoint(state.spreadsheet, event.clientX, event.clientY, { moving: true });
   return true;
 }
 
@@ -669,7 +674,7 @@ function finishRangeDrag(event) {
   const drag = state.rangeDrag;
   state.rangeDrag = null;
   if (!drag || drag.pointerId !== event.pointerId || !drag.active) return false;
-  state.spreadsheet?.sheet?.selectRangeEndByClientPoint?.(event.clientX, event.clientY, false);
+  selectRangeEndByClientPoint(state.spreadsheet, event.clientX, event.clientY, { moving: false });
   hideLongPressMenu();
   return true;
 }
@@ -865,13 +870,7 @@ function scheduleViewportUpdate(delay = 0, force = false) {
     state.lastViewportSize = size;
     els.scaleLayer.style.minWidth = `${size.width}px`;
     els.scaleLayer.style.minHeight = `${size.height}px`;
-    if (typeof state.spreadsheet?.resize === 'function') {
-      state.spreadsheet.resize();
-    } else if (typeof state.spreadsheet?.reload === 'function') {
-      state.spreadsheet.reload();
-    } else {
-      state.spreadsheet?.reRender();
-    }
+    resizeSpreadsheet(state.spreadsheet);
     els.gestureLayer.scrollLeft = scrollLeft;
     els.gestureLayer.scrollTop = scrollTop;
   });

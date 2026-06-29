@@ -952,29 +952,6 @@ export default class Sheet {
     return this;
   }
 
-  cellRectByClientPoint(clientX, clientY) {
-    const rect = this.overlayerEl.el.getBoundingClientRect();
-    const scaleX = rect.width ? this.overlayerEl.el.offsetWidth / rect.width : 1;
-    const scaleY = rect.height ? this.overlayerEl.el.offsetHeight / rect.height : 1;
-    const offsetX = (clientX - rect.left) * scaleX;
-    const offsetY = (clientY - rect.top) * scaleY;
-    return this.data.getCellRectByXY(offsetX, offsetY);
-  }
-
-  selectCellByClientPoint(clientX, clientY) {
-    const { ri, ci } = this.cellRectByClientPoint(clientX, clientY);
-    if (ri < 0 || ci < 0) return null;
-    selectorSet.call(this, false, ri, ci);
-    return { ri, ci, range: this.selector.range };
-  }
-
-  selectRangeEndByClientPoint(clientX, clientY, moving = true) {
-    const { ri, ci } = this.cellRectByClientPoint(clientX, clientY);
-    if (ri < 0 || ci < 0) return null;
-    selectorSet.call(this, true, ri, ci, true, moving);
-    return { ri, ci, range: this.selector.range };
-  }
-
   getRect() {
     const { data } = this;
     return { width: data.viewWidth(), height: data.viewHeight() };
