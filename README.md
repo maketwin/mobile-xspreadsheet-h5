@@ -41,10 +41,11 @@ The adapter package is located at:
 packages/mobile-spreadsheet-adapter
 ```
 
-It provides non-invasive helpers for mobile adaptation, including client-point
-cell lookup, drag range selection, and spreadsheet resize bridging. The package
-is allowed to read the spreadsheet runtime instance and DOM, but it must not
-modify `src/vendor/x-spreadsheet`.
+It provides a non-invasive `mountMobileSpreadsheetAdapter` entry plus helper
+APIs for mobile adaptation, including client-point cell lookup, drag range
+selection, edge auto-scroll while selecting, pinch gesture callbacks, and
+spreadsheet resize bridging. The package is allowed to read the spreadsheet
+runtime instance and DOM, but it must not modify `src/vendor/x-spreadsheet`.
 
 ## Local Preview
 

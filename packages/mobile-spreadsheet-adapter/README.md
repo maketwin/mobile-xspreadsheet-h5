@@ -10,6 +10,8 @@ so mobile behavior can evolve without patching the Excel base.
 
 - Convert browser client coordinates to spreadsheet cell coordinates.
 - Extend the current selected range during mobile drag selection.
+- Own the mobile pointer state machine through `mountMobileSpreadsheetAdapter`.
+- Support edge auto-scroll while dragging a range near the viewport boundary.
 - Trigger the spreadsheet's existing selection event and render path.
 - Provide small, composable helpers that the host app can wire into its own
   editor, keyboard, long-press menu, and pinch-zoom UI.
@@ -24,10 +26,18 @@ so mobile behavior can evolve without patching the Excel base.
 
 ```js
 import {
-  cellRectByClientPoint,
-  selectRangeEndByClientPoint,
+  mountMobileSpreadsheetAdapter,
 } from '../packages/mobile-spreadsheet-adapter/src/index.js';
 
-const cellRect = cellRectByClientPoint(spreadsheet, clientX, clientY);
-selectRangeEndByClientPoint(spreadsheet, clientX, clientY);
+const adapter = mountMobileSpreadsheetAdapter({
+  spreadsheet,
+  target: document.querySelector('#gestureLayer'),
+  getSelected: () => selectedCellState,
+  onSingleTap: () => hideEditor(),
+  onDoubleTap: () => showEditor(),
+  onLongPress: event => showMenu(event.clientX, event.clientY),
+  onPinchMove: pinch => setScale(baseScale * pinch.scaleDelta),
+});
+
+adapter.destroy();
 ```

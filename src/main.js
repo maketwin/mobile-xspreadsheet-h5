@@ -1,8 +1,7 @@
 import Spreadsheet from './vendor/x-spreadsheet';
 import {
-  cellRectByClientPoint,
+  mountMobileSpreadsheetAdapter,
   resizeSpreadsheet,
-  selectRangeEndByClientPoint,
 } from '../packages/mobile-spreadsheet-adapter/src/index.js';
 import './styles.css';
 
@@ -98,13 +97,12 @@ const els = {
 
 const state = {
   spreadsheet: null,
+  mobileAdapter: null,
   selected: { ri: 0, ci: 0, text: '' },
   editorType: 'text',
   isEditing: false,
   scale: 1,
   baseScale: 1,
-  pinchStartDistance: 0,
-  pointerCache: new Map(),
   isPinching: false,
   keyboardOffset: 0,
   editorHeight: 132,
@@ -113,13 +111,6 @@ const state = {
   keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
-  tapStart: null,
-  lastTap: null,
-  rangeDrag: null,
-  longPressTimer: 0,
-  longPressStart: null,
-  longPressPointerId: null,
-  longPressTriggered: false,
 };
 
 const columns = ['项目组', '版本', '负责人', '系统', '需求说明', '日期', '状态'];
@@ -567,174 +558,51 @@ function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
   if (updateViewport) scheduleViewportUpdate(immediate ? 0 : 90);
 }
 
-function distance(a, b) {
-  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-}
-
-function isSelectedCellAtPoint(event) {
-  const cellRect = cellRectByClientPoint(state.spreadsheet, event.clientX, event.clientY);
-  if (!cellRect || cellRect.ri < 0 || cellRect.ci < 0) return false;
-  if (state.selected.range?.includes?.(cellRect.ri, cellRect.ci)) return true;
-  return cellRect.ri === state.selected.ri && cellRect.ci === state.selected.ci;
-}
-
-function onPointerDown(event) {
+function handleAdapterSingleTap(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
-  state.pointerCache.set(event.pointerId, event);
-  state.tapStart = {
-    pointerId: event.pointerId,
-    x: event.clientX,
-    y: event.clientY,
-    time: performance.now(),
-    moved: false,
-  };
-  state.rangeDrag = {
-    pointerId: event.pointerId,
-    x: event.clientX,
-    y: event.clientY,
-    active: false,
-    canStart: isSelectedCellAtPoint(event),
-  };
   if (event.pointerType !== 'mouse' || event.button === 0) {
     setEditing(false);
   }
-  if (state.pointerCache.size === 1 && (event.pointerType !== 'mouse' || event.button === 0)) {
-    startLongPress(event);
-  }
-  if (state.pointerCache.size === 2) {
-    cancelLongPress();
-    const points = [...state.pointerCache.values()];
-    state.pinchStartDistance = distance(points[0], points[1]);
-    state.baseScale = state.scale;
-    state.isPinching = true;
-    els.gestureLayer.classList.add('pinching');
-    els.gestureTip.classList.add('show');
-  }
 }
 
-function onPointerMove(event) {
-  if (!state.pointerCache.has(event.pointerId)) return;
-  state.pointerCache.set(event.pointerId, event);
-  if (handleRangeDragMove(event)) return;
-  if (state.longPressPointerId === event.pointerId && state.longPressStart) {
-    const dx = event.clientX - state.longPressStart.x;
-    const dy = event.clientY - state.longPressStart.y;
-    if (Math.hypot(dx, dy) > 10) {
-      cancelLongPress();
-      if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
-    }
-  }
-  if (state.pointerCache.size !== 2) return;
+function handleAdapterDoubleTap() {
+  enterEditMode();
+}
 
-  event.preventDefault();
-  const points = [...state.pointerCache.values()];
-  const nextDistance = distance(points[0], points[1]);
-  if (!state.pinchStartDistance) return;
-  setScale(state.baseScale * (nextDistance / state.pinchStartDistance), {
+function handleAdapterLongPress(event) {
+  showLongPressMenu(event.clientX, event.clientY);
+}
+
+function handleAdapterRangeDragStart() {
+  hideLongPressMenu();
+  setEditing(false);
+}
+
+function handleAdapterRangeDragEnd() {
+  hideLongPressMenu();
+}
+
+function handleAdapterPinchStart(pinch) {
+  state.baseScale = state.scale;
+  state.isPinching = true;
+  els.gestureLayer.classList.add('pinching');
+  els.gestureTip.classList.add('show');
+  pinch.baseScale = state.baseScale;
+}
+
+function handleAdapterPinchMove(pinch) {
+  setScale((pinch.baseScale || state.baseScale) * pinch.scaleDelta, {
     immediate: false,
     updateViewport: false,
   });
 }
 
-function onPointerUp(event) {
-  const wasRangeDragging = finishRangeDrag(event);
-  if (!wasRangeDragging) handleTapEnd(event);
-  state.pointerCache.delete(event.pointerId);
-  if (state.longPressPointerId === event.pointerId) cancelLongPress();
-  if (state.pointerCache.size < 2) {
-    if (state.isPinching) scheduleViewportUpdate();
-    state.isPinching = false;
-    els.gestureLayer.classList.remove('pinching');
-    setTimeout(() => els.gestureTip.classList.remove('show'), 700);
-  }
-}
-
-function handleRangeDragMove(event) {
-  const drag = state.rangeDrag;
-  if (!drag || drag.pointerId !== event.pointerId || !drag.canStart) return false;
-  if (state.pointerCache.size > 1 || state.isPinching) {
-    state.rangeDrag = null;
-    return false;
-  }
-
-  const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
-  if (!drag.active && moved < 14) return false;
-
-  drag.active = true;
-  event.preventDefault();
-  cancelLongPress();
-  state.lastTap = null;
-  if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
-  selectRangeEndByClientPoint(state.spreadsheet, event.clientX, event.clientY, { moving: true });
-  return true;
-}
-
-function finishRangeDrag(event) {
-  const drag = state.rangeDrag;
-  state.rangeDrag = null;
-  if (!drag || drag.pointerId !== event.pointerId || !drag.active) return false;
-  selectRangeEndByClientPoint(state.spreadsheet, event.clientX, event.clientY, { moving: false });
-  hideLongPressMenu();
-  return true;
-}
-
-function handleTapEnd(event) {
-  const tapStart = state.tapStart;
-  state.tapStart = null;
-  if (!tapStart || tapStart.pointerId !== event.pointerId) return;
-  if (state.isPinching || state.pointerCache.size > 1 || state.longPressTriggered) {
-    state.lastTap = null;
-    return;
-  }
-
-  const now = performance.now();
-  const dx = event.clientX - tapStart.x;
-  const dy = event.clientY - tapStart.y;
-  const distanceMoved = Math.hypot(dx, dy);
-  const isTap = !tapStart.moved && distanceMoved <= 10 && now - tapStart.time < 420;
-  if (!isTap) return;
-
-  const lastTap = state.lastTap;
-  const isDoubleTap = lastTap
-    && now - lastTap.time < 320
-    && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 24
-    && lastTap.ri === state.selected.ri
-    && lastTap.ci === state.selected.ci;
-
-  if (isDoubleTap) {
-    state.lastTap = null;
-    enterEditMode();
-    return;
-  }
-
-  state.lastTap = {
-    time: now,
-    x: event.clientX,
-    y: event.clientY,
-    ri: state.selected.ri,
-    ci: state.selected.ci,
-  };
-}
-
-function startLongPress(event) {
-  cancelLongPress();
-  state.longPressTriggered = false;
-  state.longPressPointerId = event.pointerId;
-  state.longPressStart = { x: event.clientX, y: event.clientY };
-  state.longPressTimer = window.setTimeout(() => {
-    state.longPressTimer = 0;
-    state.longPressTriggered = true;
-    state.lastTap = null;
-    showLongPressMenu(event.clientX, event.clientY);
-  }, 550);
-}
-
-function cancelLongPress() {
-  window.clearTimeout(state.longPressTimer);
-  state.longPressTimer = 0;
-  state.longPressPointerId = null;
-  state.longPressStart = null;
+function handleAdapterPinchEnd() {
+  if (state.isPinching) scheduleViewportUpdate();
+  state.isPinching = false;
+  els.gestureLayer.classList.remove('pinching');
+  setTimeout(() => els.gestureTip.classList.remove('show'), 700);
 }
 
 function syncLongPressMenuContent() {
@@ -746,7 +614,7 @@ function syncLongPressMenuContent() {
 }
 
 function showLongPressMenu(clientX, clientY) {
-  if (state.pointerCache.size > 1 || state.isPinching) return;
+  if (state.isPinching) return;
   syncLongPressMenuContent();
   const shellRect = els.appShell.getBoundingClientRect();
   els.longPressMenu.classList.remove('hidden');
@@ -771,6 +639,23 @@ function showLongPressMenu(clientX, clientY) {
 function hideLongPressMenu() {
   els.longPressMenu.classList.remove('show');
   els.longPressMenu.classList.add('hidden');
+}
+
+function mountAdapter() {
+  state.mobileAdapter?.destroy?.();
+  state.mobileAdapter = mountMobileSpreadsheetAdapter({
+    spreadsheet: state.spreadsheet,
+    target: els.gestureLayer,
+    getSelected: () => state.selected,
+    onSingleTap: handleAdapterSingleTap,
+    onDoubleTap: handleAdapterDoubleTap,
+    onLongPress: handleAdapterLongPress,
+    onRangeDragStart: handleAdapterRangeDragStart,
+    onRangeDragEnd: handleAdapterRangeDragEnd,
+    onPinchStart: handleAdapterPinchStart,
+    onPinchMove: handleAdapterPinchMove,
+    onPinchEnd: handleAdapterPinchEnd,
+  });
 }
 
 function showGestureTip(message) {
@@ -953,15 +838,6 @@ function bindEvents() {
     scheduleViewportUpdate(80, true);
   });
 
-  els.gestureLayer.addEventListener('pointerdown', onPointerDown, { passive: true });
-  els.gestureLayer.addEventListener('pointermove', onPointerMove, { passive: false });
-  els.gestureLayer.addEventListener('pointerup', onPointerUp, { passive: true });
-  els.gestureLayer.addEventListener('pointercancel', onPointerUp, { passive: true });
-  els.gestureLayer.addEventListener('dblclick', (event) => {
-    event.preventDefault();
-    enterEditMode();
-  });
-
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncKeyboardOffset);
     window.visualViewport.addEventListener('scroll', syncKeyboardOffset);
@@ -977,6 +853,7 @@ function bindEvents() {
 
 bindEvents();
 initSpreadsheet();
+mountAdapter();
 window.runSpreadsheetPerf = runSpreadsheetPerf;
 setScale(1);
 syncKeyboardOffset();
