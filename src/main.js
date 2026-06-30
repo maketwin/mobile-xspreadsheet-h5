@@ -2,6 +2,7 @@ import Spreadsheet from './vendor/x-spreadsheet';
 import {
   mountMobileSpreadsheetAdapter,
   resizeSpreadsheet,
+  selectedRangeClientRect,
 } from '../packages/mobile-spreadsheet-adapter/src/index.js';
 import './styles.css';
 
@@ -31,6 +32,10 @@ app.innerHTML = `
       </div>
       <div class="gesture-tip" id="gestureTip">双指捏合可缩放，单指拖动可浏览表格</div>
       <div class="perf-panel hidden" id="perfPanel" aria-live="polite"></div>
+      <div class="selection-handles hidden" id="selectionHandles" aria-hidden="true">
+        <button class="selection-handle start" type="button" data-mobile-selection-handle="start" aria-label="拖动调整选区起点"></button>
+        <button class="selection-handle end" type="button" data-mobile-selection-handle="end" aria-label="拖动调整选区终点"></button>
+      </div>
       <div class="long-press-menu hidden" id="longPressMenu" role="menu" aria-label="单元格快捷菜单">
         <div class="menu-title">
           <strong id="menuCellAddress">C2</strong>
@@ -83,6 +88,9 @@ const els = {
   zoomText: document.querySelector('#zoomText'),
   gestureTip: document.querySelector('#gestureTip'),
   perfPanel: document.querySelector('#perfPanel'),
+  selectionHandles: document.querySelector('#selectionHandles'),
+  selectionStartHandle: document.querySelector('[data-mobile-selection-handle="start"]'),
+  selectionEndHandle: document.querySelector('[data-mobile-selection-handle="end"]'),
   longPressMenu: document.querySelector('#longPressMenu'),
   menuCellAddress: document.querySelector('#menuCellAddress'),
   menuCellText: document.querySelector('#menuCellText'),
@@ -108,6 +116,7 @@ const state = {
   editorHeight: 132,
   viewportRaf: 0,
   viewportTimer: 0,
+  handleRaf: 0,
   keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
@@ -392,6 +401,8 @@ function initSpreadsheet() {
     updateSelection({ text }, ri, ci);
   });
 
+  state.spreadsheet.sheet?.selector?.set?.(1, 2);
+  state.spreadsheet.sheet?.table?.render?.();
   updateSelection({ text: rows[0][2] }, 1, 2);
   scheduleViewportUpdate();
 }
@@ -422,6 +433,7 @@ function updateSelection(cell, ri, ci) {
     setEditorType('text', false);
   }
   syncLongPressMenuContent();
+  scheduleSelectionHandleUpdate();
 }
 
 function updateRangeSelection(cell, range) {
@@ -436,6 +448,7 @@ function updateRangeSelection(cell, range) {
   els.cellInput.value = text;
   els.dateInput.value = normalizeDate(text);
   syncLongPressMenuContent();
+  scheduleSelectionHandleUpdate();
 }
 
 function toColumnName(index) {
@@ -473,6 +486,7 @@ function setEditing(isEditing) {
     document.documentElement.classList.remove('keyboard-open');
   }
   scheduleViewportUpdate(0, true);
+  scheduleSelectionHandleUpdate();
 }
 
 function setEditorType(type, focus = true) {
@@ -555,6 +569,7 @@ function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
   els.scaleLayer.style.height = `${100 / state.scale}%`;
   els.zoomText.textContent = `${Math.round(state.scale * 100)}%`;
   hideLongPressMenu();
+  scheduleSelectionHandleUpdate();
   if (updateViewport) scheduleViewportUpdate(immediate ? 0 : 90);
 }
 
@@ -577,10 +592,13 @@ function handleAdapterLongPress(event) {
 function handleAdapterRangeDragStart() {
   hideLongPressMenu();
   setEditing(false);
+  els.selectionHandles.classList.add('dragging');
 }
 
 function handleAdapterRangeDragEnd() {
   hideLongPressMenu();
+  els.selectionHandles.classList.remove('dragging');
+  scheduleSelectionHandleUpdate();
 }
 
 function handleAdapterPinchStart(pinch) {
@@ -596,6 +614,7 @@ function handleAdapterPinchMove(pinch) {
     immediate: false,
     updateViewport: false,
   });
+  scheduleSelectionHandleUpdate();
 }
 
 function handleAdapterPinchEnd() {
@@ -641,6 +660,50 @@ function hideLongPressMenu() {
   els.longPressMenu.classList.add('hidden');
 }
 
+function setHandlePosition(handle, x, y) {
+  handle.style.left = `${Math.round(x)}px`;
+  handle.style.top = `${Math.round(y)}px`;
+}
+
+function updateSelectionHandles() {
+  if (!els.selectionHandles || state.isEditing || state.isPinching) {
+    els.selectionHandles?.classList.add('hidden');
+    return;
+  }
+  const rect = selectedRangeClientRect(state.spreadsheet);
+  const hostRect = els.gestureLayer.getBoundingClientRect();
+  if (!rect || rect.width <= 0 || rect.height <= 0) {
+    els.selectionHandles.classList.add('hidden');
+    return;
+  }
+
+  const left = rect.left - hostRect.left;
+  const top = rect.top - hostRect.top;
+  const right = rect.right - hostRect.left;
+  const bottom = rect.bottom - hostRect.top;
+  const hostWidth = hostRect.width;
+  const hostHeight = hostRect.height;
+  const outOfView = right < 0 || bottom < 0 || left > hostWidth || top > hostHeight;
+  if (outOfView) {
+    els.selectionHandles.classList.add('hidden');
+    return;
+  }
+
+  els.selectionHandles.classList.remove('hidden');
+  setHandlePosition(els.selectionStartHandle, left, top);
+  setHandlePosition(els.selectionEndHandle, right, bottom);
+}
+
+function scheduleSelectionHandleUpdate(delay = 0) {
+  if (!els.selectionHandles) return;
+  cancelAnimationFrame(state.handleRaf);
+  if (delay > 0) {
+    window.setTimeout(scheduleSelectionHandleUpdate, delay);
+    return;
+  }
+  state.handleRaf = requestAnimationFrame(updateSelectionHandles);
+}
+
 function mountAdapter() {
   state.mobileAdapter?.destroy?.();
   state.mobileAdapter = mountMobileSpreadsheetAdapter({
@@ -651,6 +714,7 @@ function mountAdapter() {
     onDoubleTap: handleAdapterDoubleTap,
     onLongPress: handleAdapterLongPress,
     onRangeDragStart: handleAdapterRangeDragStart,
+    onRangeDragMove: () => scheduleSelectionHandleUpdate(),
     onRangeDragEnd: handleAdapterRangeDragEnd,
     onPinchStart: handleAdapterPinchStart,
     onPinchMove: handleAdapterPinchMove,
@@ -758,6 +822,7 @@ function scheduleViewportUpdate(delay = 0, force = false) {
     resizeSpreadsheet(state.spreadsheet);
     els.gestureLayer.scrollLeft = scrollLeft;
     els.gestureLayer.scrollTop = scrollTop;
+    scheduleSelectionHandleUpdate();
   });
 }
 
@@ -845,6 +910,7 @@ function bindEvents() {
   window.addEventListener('resize', () => {
     syncKeyboardOffset();
     scheduleViewportUpdate();
+    scheduleSelectionHandleUpdate();
   });
 
   const editorObserver = new ResizeObserver(() => scheduleViewportUpdate());
@@ -857,3 +923,4 @@ mountAdapter();
 window.runSpreadsheetPerf = runSpreadsheetPerf;
 setScale(1);
 syncKeyboardOffset();
+scheduleSelectionHandleUpdate();

@@ -175,10 +175,12 @@
 - 包名：`@mobile-excel/x-spreadsheet-adapter`。
 - 提供非侵入式 helper：
   - `cellRectByClientPoint`
+  - `getSelectedRange`
   - `selectedRangeIncludes`
+  - `selectedRangeClientRect`
   - `selectRangeEndByClientPoint`
   - `resizeSpreadsheet`
-- demo 的移动端拖动框选改为通过适配包调用，不再要求 `src/vendor/x-spreadsheet` 新增方法。
+- demo 的移动端拖动框选、选区手柄拖拽改为通过适配包调用，不再要求 `src/vendor/x-spreadsheet` 新增方法。
 - 当前功能分支相对 `origin/main` 不再包含 `src/vendor/x-spreadsheet` 差异。
 
 包边界：
@@ -195,6 +197,7 @@
 - 移动端双击编辑。
 - 移动端长按快捷菜单。
 - 移动端拖动框选范围。
+- 移动端拖动选区起点/终点手柄调整范围。
 - 双指缩放。
 - 键盘弹起适配。
 - iOS / Android 视口差异兼容。
@@ -217,6 +220,8 @@
 - 取消编辑后编辑栏收起。
 - 从 `A2` 拖动到右下后地址显示 `A2:D5`。
 - 拖动框选不会误弹编辑栏或长按菜单，并已改为适配包方式实现。
+- 拖动右下角选区手柄后可扩大选区，编辑栏保持隐藏。
+- 双击进入编辑后，选区手柄自动隐藏，避免遮挡输入。
 - 缩放后 canvas 尺寸重新适配。
 - 键盘弹起后不再出现上方大空白。
 - 当前功能分支相对 `origin/main` 无 `src/vendor/x-spreadsheet` 差异。

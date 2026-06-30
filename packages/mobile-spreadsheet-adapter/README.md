@@ -11,6 +11,8 @@ so mobile behavior can evolve without patching the Excel base.
 - Convert browser client coordinates to spreadsheet cell coordinates.
 - Extend the current selected range during mobile drag selection.
 - Own the mobile pointer state machine through `mountMobileSpreadsheetAdapter`.
+- Support draggable mobile selection handles through
+  `data-mobile-selection-handle="start|end"`.
 - Support edge auto-scroll while dragging a range near the viewport boundary.
 - Trigger the spreadsheet's existing selection event and render path.
 - Provide small, composable helpers that the host app can wire into its own
@@ -41,3 +43,17 @@ const adapter = mountMobileSpreadsheetAdapter({
 
 adapter.destroy();
 ```
+
+## Selection Handles
+
+The adapter does not render handles by itself. The host app can place any UI
+over the selected range and mark the handles with:
+
+```html
+<button data-mobile-selection-handle="start"></button>
+<button data-mobile-selection-handle="end"></button>
+```
+
+Dragging the start handle keeps the range end as the anchor. Dragging the end
+handle keeps the range start as the anchor. This keeps selection resizing in
+the adapter package while the host app owns the visual style.

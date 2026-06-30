@@ -25,12 +25,42 @@ export function selectedRangeIncludes(spreadsheet, ri, ci) {
   return range?.includes?.(ri, ci) === true;
 }
 
+export function getSelectedRange(spreadsheet) {
+  const sheet = getSheet(spreadsheet);
+  return sheet?.selector?.range || sheet?.data?.selector?.range || null;
+}
+
+function getRangeStartEnd(range) {
+  if (!range) return null;
+  return {
+    start: { ri: range.sri, ci: range.sci },
+    end: { ri: range.eri, ci: range.eci },
+  };
+}
+
+function setSelectionAnchor(sheet, anchor) {
+  if (!sheet || !anchor) return;
+  sheet.data?.selector?.setIndexes?.(anchor.ri, anchor.ci);
+  if (sheet.selector) {
+    sheet.selector.indexes = [anchor.ri, anchor.ci];
+    sheet.selector.moveIndexes = [anchor.ri, anchor.ci];
+  }
+}
+
+export function selectedRangeClientRect(spreadsheet) {
+  const sheet = getSheet(spreadsheet);
+  const areaEl = sheet?.selector?.br?.areaEl?.el || sheet?.selector?.br?.areaEl;
+  if (!areaEl || areaEl.offsetParent === null) return null;
+  return areaEl.getBoundingClientRect();
+}
+
 export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options = {}) {
   const sheet = getSheet(spreadsheet);
   const cellRect = cellRectByClientPoint(spreadsheet, clientX, clientY);
   if (!sheet || !cellRect || cellRect.ri < 0 || cellRect.ci < 0) return null;
 
   const moving = options.moving !== false;
+  if (options.anchor) setSelectionAnchor(sheet, options.anchor);
   sheet.selector?.setEnd?.(cellRect.ri, cellRect.ci, moving);
 
   const range = sheet.selector?.range || sheet.data?.selector?.range;
@@ -86,6 +116,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     onPinchStart,
     onPinchMove,
     onPinchEnd,
+    isSelectionHandle = event => event.target?.closest?.('[data-mobile-selection-handle]'),
     longPressMs = 550,
     tapMoveTolerance = 10,
     dragStartTolerance = 14,
@@ -135,6 +166,20 @@ export function mountMobileSpreadsheetAdapter(options) {
     return selected?.ri === cellRect.ri && selected?.ci === cellRect.ci;
   }
 
+  function getHandleDrag(event) {
+    const handle = isSelectionHandle?.(event);
+    if (!handle) return null;
+    const range = getSelectedRange(spreadsheet);
+    const endpoints = getRangeStartEnd(range);
+    if (!endpoints) return null;
+    const role = handle.dataset?.mobileSelectionHandle || handle.getAttribute?.('data-mobile-selection-handle') || 'end';
+    return {
+      handle,
+      role,
+      anchor: role === 'start' ? endpoints.end : endpoints.start,
+    };
+  }
+
   function edgeDelta(clientX, clientY) {
     const rect = target.getBoundingClientRect();
     let dx = 0;
@@ -164,7 +209,10 @@ export function mountMobileSpreadsheetAdapter(options) {
     const { horizontal, vertical } = getScrollbars(spreadsheet);
     moveScrollbar(horizontal, 'left', dx);
     moveScrollbar(vertical, 'top', dy);
-    selectRangeEndByClientPoint(spreadsheet, state.edgeScrollPoint.clientX, state.edgeScrollPoint.clientY, { moving: true });
+    selectRangeEndByClientPoint(spreadsheet, state.edgeScrollPoint.clientX, state.edgeScrollPoint.clientY, {
+      moving: true,
+      anchor: state.edgeScrollPoint.anchor,
+    });
     state.edgeScrollFrame = window.requestAnimationFrame(runEdgeScroll);
   }
 
@@ -175,7 +223,11 @@ export function mountMobileSpreadsheetAdapter(options) {
       stopEdgeScroll();
       return;
     }
-    state.edgeScrollPoint = { clientX: event.clientX, clientY: event.clientY };
+    state.edgeScrollPoint = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      anchor: state.rangeDrag?.anchor || null,
+    };
     if (!state.edgeScrollFrame) {
       state.edgeScrollFrame = window.requestAnimationFrame(runEdgeScroll);
     }
@@ -198,7 +250,10 @@ export function mountMobileSpreadsheetAdapter(options) {
     clearLongPress();
     state.lastTap = null;
     if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
-    const result = selectRangeEndByClientPoint(spreadsheet, event.clientX, event.clientY, { moving: true });
+    const result = selectRangeEndByClientPoint(spreadsheet, event.clientX, event.clientY, {
+      moving: true,
+      anchor: drag.anchor,
+    });
     updateEdgeScroll(event);
     if (!drag.started) {
       drag.started = true;
@@ -213,7 +268,10 @@ export function mountMobileSpreadsheetAdapter(options) {
     state.rangeDrag = null;
     stopEdgeScroll();
     if (!drag || drag.pointerId !== event.pointerId || !drag.active) return false;
-    const result = selectRangeEndByClientPoint(spreadsheet, event.clientX, event.clientY, { moving: false });
+    const result = selectRangeEndByClientPoint(spreadsheet, event.clientX, event.clientY, {
+      moving: false,
+      anchor: drag.anchor,
+    });
     onRangeDragEnd?.(result, event);
     return true;
   }
@@ -257,6 +315,11 @@ export function mountMobileSpreadsheetAdapter(options) {
   }
 
   function onPointerDown(event) {
+    const handleDrag = getHandleDrag(event);
+    if (handleDrag) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     state.pointers.set(event.pointerId, event);
     state.tapStart = {
       pointerId: event.pointerId,
@@ -270,8 +333,10 @@ export function mountMobileSpreadsheetAdapter(options) {
       x: event.clientX,
       y: event.clientY,
       active: false,
-      canStart: selectedIncludesPoint(event),
+      canStart: Boolean(handleDrag) || selectedIncludesPoint(event),
       started: false,
+      anchor: handleDrag?.anchor || null,
+      handleRole: handleDrag?.role || null,
     };
 
     if (state.pointers.size === 1 && (event.pointerType !== 'mouse' || event.button === 0)) {
@@ -333,7 +398,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     }
   }
 
-  target.addEventListener('pointerdown', onPointerDown, { passive: true });
+  target.addEventListener('pointerdown', onPointerDown, { passive: false });
   target.addEventListener('pointermove', onPointerMove, { passive: false });
   target.addEventListener('pointerup', onPointerUp, { passive: true });
   target.addEventListener('pointercancel', onPointerUp, { passive: true });

@@ -251,6 +251,65 @@ button {
   white-space: nowrap;
 }
 
+.selection-handles {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+}
+
+.selection-handle {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.selection-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 2px 8px rgba(22, 119, 255, .35);
+}
+
+.selection-handle.start::after,
+.selection-handle.end::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--blue);
+}
+
+.selection-handle.start::after {
+  top: 17px;
+}
+
+.selection-handle.end::after {
+  bottom: 17px;
+}
+
+.selection-handles.dragging .selection-handle::before,
+.selection-handle:active::before {
+  transform: scale(1.18);
+  box-shadow: 0 3px 12px rgba(22, 119, 255, .46);
+}
+
 .long-press-menu {
   position: absolute;
   z-index: 60;
