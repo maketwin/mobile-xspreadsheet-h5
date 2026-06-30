@@ -180,6 +180,16 @@
   - `selectedRangeClientRect`
   - `selectRangeEndByClientPoint`
   - `resizeSpreadsheet`
+- 提供 `mountMobileSpreadsheetAdapter` 手势运行时：
+  - 单击选中
+  - 双击编辑回调
+  - 长按菜单回调
+  - 选区拖拽
+  - 选区起点/终点手柄拖拽
+  - 双指捏合回调
+  - 边缘自动滚动
+- 补齐 `src/index.d.ts` 类型声明。
+- 补齐公共 API JSDoc 和关键移动端适配逻辑注释。
 - demo 的移动端拖动框选、选区手柄拖拽改为通过适配包调用，不再要求 `src/vendor/x-spreadsheet` 新增方法。
 - 当前功能分支相对 `origin/main` 不再包含 `src/vendor/x-spreadsheet` 差异。
 
@@ -206,7 +216,7 @@
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量性能测试入口。
 - GitHub Pages 自动部署。
-- 移动端适配包骨架。
+- 移动端适配包可接入形态，包括 README、JSDoc、类型声明和宿主边界说明。
 
 ## 验证记录
 
@@ -224,6 +234,7 @@
 - 双击进入编辑后，选区手柄自动隐藏，避免遮挡输入。
 - 缩放后 canvas 尺寸重新适配。
 - 键盘弹起后不再出现上方大空白。
+- 适配包公共接口具备 JSDoc 和 TypeScript 类型提示。
 - 当前功能分支相对 `origin/main` 无 `src/vendor/x-spreadsheet` 差异。
 
 ## 待合并提交

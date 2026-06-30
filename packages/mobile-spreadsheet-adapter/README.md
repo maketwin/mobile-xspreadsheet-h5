@@ -44,6 +44,56 @@ const adapter = mountMobileSpreadsheetAdapter({
 adapter.destroy();
 ```
 
+## API
+
+### `mountMobileSpreadsheetAdapter(options)`
+
+Mounts mobile pointer handling on a host element and returns a controller with
+`destroy()`.
+
+Required options:
+
+- `spreadsheet`: x-spreadsheet instance.
+- `target`: DOM element that receives pointer events, usually the sheet
+  viewport or a transparent gesture layer.
+
+Main callbacks:
+
+- `onSingleTap(event)`: select-only behavior, often used to hide the editor.
+- `onDoubleTap(event)`: enter edit mode.
+- `onLongPress(event)`: show a cell or range action menu.
+- `onRangeDragStart(result, event)`: range drag has crossed the movement
+  threshold.
+- `onRangeDragMove(result, event)`: range changed during dragging.
+- `onRangeDragEnd(result, event)`: range drag finished.
+- `onPinchStart(pinch, event)`, `onPinchMove(pinch, event)`,
+  `onPinchEnd(pinch, event)`: host-owned zoom behavior.
+
+Gesture thresholds:
+
+- `longPressMs`: defaults to `550`.
+- `tapMoveTolerance`: defaults to `10`.
+- `dragStartTolerance`: defaults to `14`.
+- `doubleTapMs`: defaults to `320`.
+- `doubleTapTolerance`: defaults to `24`.
+- `edgeScroll`: defaults to `true`.
+- `edgeSize`: defaults to `42`.
+- `edgeMaxSpeed`: defaults to `18`.
+
+### Coordinate and Selection Helpers
+
+- `cellRectByClientPoint(spreadsheet, clientX, clientY)`: converts viewport
+  coordinates to a spreadsheet cell rect, respecting host CSS scale.
+- `selectedRangeIncludes(spreadsheet, ri, ci)`: checks whether a cell is inside
+  the selected range.
+- `getSelectedRange(spreadsheet)`: reads the current runtime range.
+- `selectedRangeClientRect(spreadsheet)`: reads the selected range DOM rect for
+  positioning custom handles.
+- `selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options)`: extends
+  selection to the cell under a viewport point.
+- `resizeSpreadsheet(spreadsheet)`: calls the available resize/reload/render
+  lifecycle method on the spreadsheet instance.
+
 ## Selection Handles
 
 The adapter does not render handles by itself. The host app can place any UI
@@ -57,3 +107,17 @@ over the selected range and mark the handles with:
 Dragging the start handle keeps the range end as the anchor. Dragging the end
 handle keeps the range start as the anchor. This keeps selection resizing in
 the adapter package while the host app owns the visual style.
+
+## Gesture Priority
+
+The adapter uses this order:
+
+1. Two active pointers become pinch zoom.
+2. Dragging a marked selection handle resizes the current range.
+3. Dragging inside the selected cell/range extends the range.
+4. A stable tap becomes single tap or double tap.
+5. A stable press longer than `longPressMs` becomes long press.
+
+This priority avoids the common mobile conflict where single-finger scroll,
+range resize, double tap editing, and long-press menu all compete for the same
+touch stream.

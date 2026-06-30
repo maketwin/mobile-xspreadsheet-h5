@@ -6,6 +6,18 @@ function getOverlayElement(sheet) {
   return sheet?.overlayerEl?.el || sheet?.overlayerEl;
 }
 
+/**
+ * Convert a browser viewport point to the spreadsheet cell rectangle returned
+ * by the x-spreadsheet data model.
+ *
+ * The adapter reads the rendered overlay size instead of assuming scale 1, so
+ * host apps can wrap the sheet in CSS transforms for pinch zoom.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @param {number} clientX Browser viewport x coordinate.
+ * @param {number} clientY Browser viewport y coordinate.
+ * @returns {{ri: number, ci: number, left: number, top: number, width: number, height: number} | null}
+ */
 export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
   const sheet = getSheet(spreadsheet);
   const overlayEl = getOverlayElement(sheet);
@@ -19,12 +31,26 @@ export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
   return sheet.data.getCellRectByXY(offsetX, offsetY);
 }
 
+/**
+ * Test whether a row/column index is inside the current selected range.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @param {number} ri Row index.
+ * @param {number} ci Column index.
+ * @returns {boolean}
+ */
 export function selectedRangeIncludes(spreadsheet, ri, ci) {
   const sheet = getSheet(spreadsheet);
   const range = sheet?.data?.selector?.range || sheet?.selector?.range;
   return range?.includes?.(ri, ci) === true;
 }
 
+/**
+ * Read the current selected range from the spreadsheet runtime.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @returns {{sri: number, sci: number, eri: number, eci: number, includes?: Function} | null}
+ */
 export function getSelectedRange(spreadsheet) {
   const sheet = getSheet(spreadsheet);
   return sheet?.selector?.range || sheet?.data?.selector?.range || null;
@@ -40,6 +66,9 @@ function getRangeStartEnd(range) {
 
 function setSelectionAnchor(sheet, anchor) {
   if (!sheet || !anchor) return;
+  // x-spreadsheet extends a range from its selector indexes. Updating both
+  // runtime selector objects lets handle resizing work without patching the
+  // spreadsheet base.
   sheet.data?.selector?.setIndexes?.(anchor.ri, anchor.ci);
   if (sheet.selector) {
     sheet.selector.indexes = [anchor.ri, anchor.ci];
@@ -47,6 +76,16 @@ function setSelectionAnchor(sheet, anchor) {
   }
 }
 
+/**
+ * Return the current selected range's rendered DOM rectangle in viewport
+ * coordinates.
+ *
+ * This is intentionally a DOM helper rather than a renderer: host apps can use
+ * it to position custom mobile selection handles without the adapter owning UI.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @returns {DOMRect | null}
+ */
 export function selectedRangeClientRect(spreadsheet) {
   const sheet = getSheet(spreadsheet);
   const areaEl = sheet?.selector?.br?.areaEl?.el || sheet?.selector?.br?.areaEl;
@@ -54,6 +93,19 @@ export function selectedRangeClientRect(spreadsheet) {
   return areaEl.getBoundingClientRect();
 }
 
+/**
+ * Extend the current selected range to the cell under a browser viewport point.
+ *
+ * Passing `options.anchor` temporarily changes the selection anchor before
+ * extending the range. This is what lets a mobile start-handle drag keep the
+ * range end fixed, and an end-handle drag keep the range start fixed.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @param {number} clientX Browser viewport x coordinate.
+ * @param {number} clientY Browser viewport y coordinate.
+ * @param {{moving?: boolean, anchor?: {ri: number, ci: number}}} [options]
+ * @returns {{ri: number, ci: number, range: object} | null}
+ */
 export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options = {}) {
   const sheet = getSheet(spreadsheet);
   const cellRect = cellRectByClientPoint(spreadsheet, clientX, clientY);
@@ -76,6 +128,13 @@ export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, optio
   };
 }
 
+/**
+ * Resize or re-render a spreadsheet instance using whichever lifecycle method
+ * the host spreadsheet exposes.
+ *
+ * @param {object} spreadsheet x-spreadsheet instance.
+ * @returns {object} The spreadsheet instance or the return value of its resize method.
+ */
 export function resizeSpreadsheet(spreadsheet) {
   if (typeof spreadsheet?.resize === 'function') return spreadsheet.resize();
   if (typeof spreadsheet?.reload === 'function') return spreadsheet.reload();
@@ -102,6 +161,38 @@ function defaultNow() {
   return performance.now();
 }
 
+/**
+ * Mount the mobile gesture adapter on a host element.
+ *
+ * The adapter owns pointer bookkeeping only. Host apps keep control of visual
+ * UI: bottom editors, menus, zoom transforms, and selection handles. Every
+ * gesture is surfaced through callbacks so the package can stay independent of
+ * one fixed product design.
+ *
+ * @param {object} options Adapter options.
+ * @param {object} options.spreadsheet x-spreadsheet instance.
+ * @param {HTMLElement} options.target Element that receives pointer events.
+ * @param {Function} [options.getSelected] Returns host selection state.
+ * @param {Function} [options.onSingleTap] Called after a confirmed single tap.
+ * @param {Function} [options.onDoubleTap] Called after a confirmed double tap.
+ * @param {Function} [options.onLongPress] Called after long press timeout.
+ * @param {Function} [options.onRangeDragStart] Called when range drag activates.
+ * @param {Function} [options.onRangeDragMove] Called on active range drag moves.
+ * @param {Function} [options.onRangeDragEnd] Called when range drag ends.
+ * @param {Function} [options.onPinchStart] Called when two active pointers begin pinch.
+ * @param {Function} [options.onPinchMove] Called with scale delta during pinch.
+ * @param {Function} [options.onPinchEnd] Called when pinch ends.
+ * @param {Function} [options.isSelectionHandle] Detects a draggable selection handle.
+ * @param {number} [options.longPressMs=550] Long press threshold.
+ * @param {number} [options.tapMoveTolerance=10] Movement allowed for a tap.
+ * @param {number} [options.dragStartTolerance=14] Movement before range drag starts.
+ * @param {number} [options.doubleTapMs=320] Double tap time window.
+ * @param {number} [options.doubleTapTolerance=24] Double tap distance window.
+ * @param {boolean} [options.edgeScroll=true] Whether range drag auto-scrolls near edges.
+ * @param {number} [options.edgeSize=42] Edge zone size in CSS pixels.
+ * @param {number} [options.edgeMaxSpeed=18] Max auto-scroll speed per frame.
+ * @returns {{destroy: Function}} Adapter controller.
+ */
 export function mountMobileSpreadsheetAdapter(options) {
   const {
     spreadsheet,
@@ -132,6 +223,8 @@ export function mountMobileSpreadsheetAdapter(options) {
   }
 
   const state = {
+    // Keep gesture arbitration private to the adapter: host apps only receive
+    // resolved callbacks such as tap, range drag, long press, and pinch.
     pointers: new Map(),
     tapStart: null,
     lastTap: null,
@@ -173,6 +266,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     const endpoints = getRangeStartEnd(range);
     if (!endpoints) return null;
     const role = handle.dataset?.mobileSelectionHandle || handle.getAttribute?.('data-mobile-selection-handle') || 'end';
+    // Dragging one handle keeps the opposite corner fixed as the range anchor.
     return {
       handle,
       role,
@@ -205,6 +299,8 @@ export function mountMobileSpreadsheetAdapter(options) {
       state.edgeScrollFrame = 0;
       return;
     }
+    // Keep extending the range while the sheet scrolls near the viewport edge,
+    // so users can select cells beyond the currently visible area.
     const { dx, dy } = edgeDelta(state.edgeScrollPoint.clientX, state.edgeScrollPoint.clientY);
     const { horizontal, vertical } = getScrollbars(spreadsheet);
     moveScrollbar(horizontal, 'left', dx);
@@ -245,6 +341,8 @@ export function mountMobileSpreadsheetAdapter(options) {
     const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
     if (!drag.active && moved < dragStartTolerance) return false;
 
+    // From this point on, the stream is a range gesture. Native scrolling is
+    // prevented only after the threshold, keeping ordinary sheet scroll fluid.
     drag.active = true;
     event.preventDefault();
     clearLongPress();

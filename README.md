@@ -11,8 +11,10 @@ H5 mobile spreadsheet demo based on `x-data-spreadsheet`.
 - Pinch-to-zoom gesture layer
 - Keyboard offset handling with `visualViewport`
 - Mobile long-press cell menu
+- Mobile drag range selection and selection resize handles
+- Non-invasive mobile adapter package with type declarations
 
-## Maintained Spreadsheet Source
+## Spreadsheet Base Boundary
 
 The spreadsheet engine source is vendored under:
 
@@ -20,16 +22,18 @@ The spreadsheet engine source is vendored under:
 src/vendor/x-spreadsheet
 ```
 
-This lets us patch mobile-specific behavior directly instead of treating
-`x-data-spreadsheet` as a black-box dependency.
+The current direction is to keep this Excel base stable. Mobile-specific
+behavior should be implemented through the adapter package and demo integration
+layer, not by modifying `src/vendor/x-spreadsheet`.
 
-Current mobile patches:
+Adapter boundary:
 
-- Multi-touch is ignored by the internal touch scroller so the outer pinch zoom can work.
-- Internal touch scrolling no longer always calls `preventDefault`.
-- Built-in desktop editor is disabled in mobile mode.
-- Desktop keyboard input and paste handlers are disabled in mobile mode.
-- The app uses its own bottom cell editor and long-press menu.
+- Allowed: read the spreadsheet runtime instance and DOM geometry, call existing
+  selection/render/resize APIs, and surface mobile gestures through callbacks.
+- Not allowed: patch the spreadsheet renderer, fork internal modules, or put
+  mobile UI directly into the Excel base.
+- Host-owned: bottom editor, long-press menu, selection handles, zoom UI, data
+  persistence, permissions, and analytics.
 
 ## Mobile Adapter Package
 
@@ -43,9 +47,11 @@ packages/mobile-spreadsheet-adapter
 
 It provides a non-invasive `mountMobileSpreadsheetAdapter` entry plus helper
 APIs for mobile adaptation, including client-point cell lookup, drag range
-selection, edge auto-scroll while selecting, pinch gesture callbacks, and
-spreadsheet resize bridging. The package is allowed to read the spreadsheet
-runtime instance and DOM, but it must not modify `src/vendor/x-spreadsheet`.
+selection, selection resize handles, edge auto-scroll while selecting, pinch
+gesture callbacks, and spreadsheet resize bridging.
+
+The package includes JSDoc comments and `src/index.d.ts` so business projects
+can get editor hints when integrating it.
 
 ## Local Preview
 
