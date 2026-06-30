@@ -15,7 +15,7 @@
 }
 
 html {
-  /* prevent iOS auto-zoom on orientation change / font boost */
+  /* 防止 iOS 在横竖屏变化或字体增强时自动缩放 */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -27,7 +27,7 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
-  /* stop scroll chaining: a fling inside the sheet must not scroll the page */
+  /* 阻断滚动串联：表格内的惯性滚动不应带动页面滚动 */
   overscroll-behavior: none;
   color: var(--ink);
   background: #eef2f7;
@@ -48,7 +48,7 @@ button {
   height: 100vh;
   height: 100dvh;
   display: grid;
-  /* top row is auto-sized so it grows with the notch/safe-area inset */
+  /* 顶部行自动高度，便于适配刘海屏和安全区 */
   grid-template-rows: auto minmax(0, 1fr);
   background: #fff;
   position: fixed;
@@ -63,7 +63,7 @@ button {
   align-items: center;
   gap: 8px;
   min-height: 56px;
-  /* respect the status-bar / notch on notched devices (viewport-fit=cover) */
+  /* 适配刘海屏状态栏和安全区（viewport-fit=cover） */
   padding: max(10px, env(safe-area-inset-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, .96);
@@ -144,9 +144,9 @@ button {
   overflow: hidden;
   background: #fff;
   touch-action: pan-x pan-y;
-  /* contain overscroll so flings at the sheet edge don't bounce the page */
+  /* 限制 overscroll，避免表格边缘惯性滚动触发页面回弹 */
   overscroll-behavior: contain;
-  /* the grid is canvas-rendered; selecting text here only fights the long-press menu */
+  /* 表格由 canvas 渲染，此处选择文本只会干扰长按菜单 */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -190,7 +190,7 @@ button {
 
 .x-spreadsheet-sheet {
   touch-action: pan-x pan-y;
-  /* momentum scrolling for the internal canvas scroller on iOS */
+  /* iOS 内部 canvas 滚动容器使用惯性滚动 */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -433,7 +433,7 @@ button {
   padding: 0 10px;
   color: #17202a;
   background: #fff;
-  /* 16px prevents iOS auto-zoom on focus; keep selection enabled here */
+  /* 16px 可防止 iOS 聚焦输入框时自动缩放；这里保留文本选择能力 */
   font-size: 16px;
   user-select: text;
   -webkit-user-select: text;
@@ -569,8 +569,7 @@ button {
   }
 }
 
-/* Landscape on phones: height is scarce, so collapse the top bar and the
-   bottom editor so the grid keeps usable room. */
+/* 手机横屏高度紧张，压缩顶部栏和底部编辑器，为表格保留可用空间。 */
 @media (orientation: landscape) and (max-height: 500px) {
   .topbar {
     min-height: 0;

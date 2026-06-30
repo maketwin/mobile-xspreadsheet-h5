@@ -1,30 +1,26 @@
 # @mobile-excel/x-spreadsheet-adapter
 
-Non-invasive mobile adapter for an x-spreadsheet-like instance.
+面向 x-spreadsheet 类实例的非侵入式移动端适配包。
 
-The package is intentionally kept outside the spreadsheet engine source. It
-uses the instance object and DOM that the engine already exposes at runtime,
-so mobile behavior can evolve without patching the Excel base.
+这个包刻意放在表格引擎源码之外。它只使用引擎运行时已经暴露的实例对象和 DOM，因此移动端能力可以持续演进，而不需要 patch Excel 基座。
 
-## Responsibilities
+## 职责
 
-- Convert browser client coordinates to spreadsheet cell coordinates.
-- Extend the current selected range during mobile drag selection.
-- Own the mobile pointer state machine through `mountMobileSpreadsheetAdapter`.
-- Support draggable mobile selection handles through
-  `data-mobile-selection-handle="start|end"`.
-- Support edge auto-scroll while dragging a range near the viewport boundary.
-- Trigger the spreadsheet's existing selection event and render path.
-- Provide small, composable helpers that the host app can wire into its own
-  editor, keyboard, long-press menu, and pinch-zoom UI.
+- 将浏览器客户端坐标转换为表格单元格坐标。
+- 在移动端拖拽选择时扩展当前选区。
+- 通过 `mountMobileSpreadsheetAdapter` 维护移动端 pointer 状态机。
+- 支持带有 `data-mobile-selection-handle="start|end"` 标记的选区手柄拖拽。
+- 支持拖拽选区靠近视口边缘时自动滚动。
+- 触发表格已有的选区事件和渲染路径。
+- 提供小而可组合的 helper，由宿主应用接入自己的编辑器、键盘、长按菜单和捏合缩放 UI。
 
-## Non-goals
+## 非目标
 
-- Do not fork or modify `src/vendor/x-spreadsheet`.
-- Do not assume one fixed editor UI.
-- Do not own application data or persistence.
+- 不 fork 或修改 `src/vendor/x-spreadsheet`。
+- 不假设固定的编辑器 UI。
+- 不接管业务数据或持久化。
 
-## Basic Usage
+## 基础用法
 
 ```js
 import {
@@ -48,76 +44,62 @@ adapter.destroy();
 
 ### `mountMobileSpreadsheetAdapter(options)`
 
-Mounts mobile pointer handling on a host element and returns a controller with
-`destroy()`.
+在宿主元素上挂载移动端 pointer 处理逻辑，并返回带有 `destroy()` 的控制器。
 
-Required options:
+必填参数：
 
-- `spreadsheet`: x-spreadsheet instance.
-- `target`: DOM element that receives pointer events, usually the sheet
-  viewport or a transparent gesture layer.
+- `spreadsheet`：x-spreadsheet 实例。
+- `target`：接收 pointer 事件的 DOM 元素，通常是表格视口或透明手势层。
 
-Main callbacks:
+主要回调：
 
-- `onSingleTap(event)`: select-only behavior, often used to hide the editor.
-- `onDoubleTap(event)`: enter edit mode.
-- `onLongPress(event)`: show a cell or range action menu.
-- `onRangeDragStart(result, event)`: range drag has crossed the movement
-  threshold.
-- `onRangeDragMove(result, event)`: range changed during dragging.
-- `onRangeDragEnd(result, event)`: range drag finished.
-- `onPinchStart(pinch, event)`, `onPinchMove(pinch, event)`,
-  `onPinchEnd(pinch, event)`: host-owned zoom behavior.
+- `onSingleTap(event)`：确认单击后触发，常用于只选中并隐藏编辑器。
+- `onDoubleTap(event)`：确认双击后触发，常用于进入编辑态。
+- `onLongPress(event)`：长按阈值达成后触发，常用于展示单元格或选区操作菜单。
+- `onRangeDragStart(result, event)`：拖拽距离超过阈值、正式进入选区拖拽时触发。
+- `onRangeDragMove(result, event)`：拖拽过程中选区变化时触发。
+- `onRangeDragEnd(result, event)`：选区拖拽结束时触发。
+- `onPinchStart(pinch, event)`、`onPinchMove(pinch, event)`、`onPinchEnd(pinch, event)`：宿主自定义缩放行为。
 
-Gesture thresholds:
+手势阈值：
 
-- `longPressMs`: defaults to `550`.
-- `tapMoveTolerance`: defaults to `10`.
-- `dragStartTolerance`: defaults to `14`.
-- `doubleTapMs`: defaults to `320`.
-- `doubleTapTolerance`: defaults to `24`.
-- `edgeScroll`: defaults to `true`.
-- `edgeSize`: defaults to `42`.
-- `edgeMaxSpeed`: defaults to `18`.
+- `longPressMs`：默认 `550`。
+- `tapMoveTolerance`：默认 `10`。
+- `dragStartTolerance`：默认 `14`。
+- `doubleTapMs`：默认 `320`。
+- `doubleTapTolerance`：默认 `24`。
+- `edgeScroll`：默认 `true`。
+- `edgeSize`：默认 `42`。
+- `edgeMaxSpeed`：默认 `18`。
 
-### Coordinate and Selection Helpers
+### 坐标和选区 helper
 
-- `cellRectByClientPoint(spreadsheet, clientX, clientY)`: converts viewport
-  coordinates to a spreadsheet cell rect, respecting host CSS scale.
-- `selectedRangeIncludes(spreadsheet, ri, ci)`: checks whether a cell is inside
-  the selected range.
-- `getSelectedRange(spreadsheet)`: reads the current runtime range.
-- `selectedRangeClientRect(spreadsheet)`: reads the selected range DOM rect for
-  positioning custom handles.
-- `selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options)`: extends
-  selection to the cell under a viewport point.
-- `resizeSpreadsheet(spreadsheet)`: calls the available resize/reload/render
-  lifecycle method on the spreadsheet instance.
+- `cellRectByClientPoint(spreadsheet, clientX, clientY)`：将视口坐标转换为表格单元格 rect，并兼容宿主 CSS 缩放。
+- `selectedRangeIncludes(spreadsheet, ri, ci)`：判断单元格是否在当前选区内。
+- `getSelectedRange(spreadsheet)`：读取当前运行时选区。
+- `selectedRangeClientRect(spreadsheet)`：读取当前选区 DOM rect，用于定位宿主自定义手柄。
+- `selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options)`：将选区扩展到视口坐标下的单元格。
+- `resizeSpreadsheet(spreadsheet)`：调用 spreadsheet 实例上可用的 resize、reload 或 render 生命周期方法。
 
-## Selection Handles
+## 选区手柄
 
-The adapter does not render handles by itself. The host app can place any UI
-over the selected range and mark the handles with:
+适配包不直接渲染手柄。宿主应用可以在选区上方放置任意 UI，并用以下属性标记：
 
 ```html
 <button data-mobile-selection-handle="start"></button>
 <button data-mobile-selection-handle="end"></button>
 ```
 
-Dragging the start handle keeps the range end as the anchor. Dragging the end
-handle keeps the range start as the anchor. This keeps selection resizing in
-the adapter package while the host app owns the visual style.
+拖拽起点手柄时，适配包会把选区终点作为固定锚点。拖拽终点手柄时，适配包会把选区起点作为固定锚点。这样选区调整能力留在适配包里，视觉样式仍由宿主应用控制。
 
-## Gesture Priority
+## 手势优先级
 
-The adapter uses this order:
+适配包按以下顺序处理手势：
 
-1. Two active pointers become pinch zoom.
-2. Dragging a marked selection handle resizes the current range.
-3. Dragging inside the selected cell/range extends the range.
-4. A stable tap becomes single tap or double tap.
-5. A stable press longer than `longPressMs` becomes long press.
+1. 两个活跃 pointer 进入双指捏合。
+2. 拖拽带标记的选区手柄时调整当前选区。
+3. 在已选单元格或选区内拖拽时扩展选区。
+4. 稳定点击识别为单击或双击。
+5. 稳定按压超过 `longPressMs` 后识别为长按。
 
-This priority avoids the common mobile conflict where single-finger scroll,
-range resize, double tap editing, and long-press menu all compete for the same
-touch stream.
+这个优先级用于避免移动端常见冲突：单指滚动、选区调整、双击编辑和长按菜单都在争抢同一段触摸流。

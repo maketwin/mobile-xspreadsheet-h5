@@ -7,15 +7,13 @@ function getOverlayElement(sheet) {
 }
 
 /**
- * Convert a browser viewport point to the spreadsheet cell rectangle returned
- * by the x-spreadsheet data model.
+ * 将浏览器视口坐标转换为 x-spreadsheet 数据模型返回的单元格矩形。
  *
- * The adapter reads the rendered overlay size instead of assuming scale 1, so
- * host apps can wrap the sheet in CSS transforms for pinch zoom.
+ * 适配包会读取实际渲染后的覆盖层尺寸，而不是假设缩放为 1，因此宿主应用可以用 CSS transform 包裹表格实现捏合缩放。
  *
- * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
- * @param {number} clientX Browser viewport x coordinate.
- * @param {number} clientY Browser viewport y coordinate.
+ * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
+ * @param {number} clientX 浏览器视口 x 坐标。
+ * @param {number} clientY 浏览器视口 y 坐标。
  * @returns {{ri: number, ci: number, left: number, top: number, width: number, height: number} | null}
  */
 export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
@@ -32,11 +30,11 @@ export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
 }
 
 /**
- * Test whether a row/column index is inside the current selected range.
+ * 判断行列索引是否位于当前选区内。
  *
- * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
- * @param {number} ri Row index.
- * @param {number} ci Column index.
+ * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
+ * @param {number} ri 行索引。
+ * @param {number} ci 列索引。
  * @returns {boolean}
  */
 export function selectedRangeIncludes(spreadsheet, ri, ci) {
@@ -46,9 +44,9 @@ export function selectedRangeIncludes(spreadsheet, ri, ci) {
 }
 
 /**
- * Read the current selected range from the spreadsheet runtime.
+ * 读取 spreadsheet 运行时的当前选区。
  *
- * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
  * @returns {{sri: number, sci: number, eri: number, eci: number, includes?: Function} | null}
  */
 export function getSelectedRange(spreadsheet) {
@@ -66,9 +64,7 @@ function getRangeStartEnd(range) {
 
 function setSelectionAnchor(sheet, anchor) {
   if (!sheet || !anchor) return;
-  // x-spreadsheet extends a range from its selector indexes. Updating both
-  // runtime selector objects lets handle resizing work without patching the
-  // spreadsheet base.
+  // x-spreadsheet 会基于 selector indexes 扩展选区。这里同步更新运行时 selector 对象，让手柄调整能力无需 patch 表格基座。
   sheet.data?.selector?.setIndexes?.(anchor.ri, anchor.ci);
   if (sheet.selector) {
     sheet.selector.indexes = [anchor.ri, anchor.ci];
@@ -77,13 +73,11 @@ function setSelectionAnchor(sheet, anchor) {
 }
 
 /**
- * Return the current selected range's rendered DOM rectangle in viewport
- * coordinates.
+ * 返回当前选区渲染后的 DOM 矩形，坐标为浏览器视口坐标。
  *
- * This is intentionally a DOM helper rather than a renderer: host apps can use
- * it to position custom mobile selection handles without the adapter owning UI.
+ * 这个函数刻意只做 DOM 辅助，不接管渲染。宿主应用可以用它定位自定义移动端选区手柄。
  *
- * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
+ * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
  * @returns {DOMRect | null}
  */
 export function selectedRangeClientRect(spreadsheet) {
@@ -94,15 +88,13 @@ export function selectedRangeClientRect(spreadsheet) {
 }
 
 /**
- * Extend the current selected range to the cell under a browser viewport point.
+ * 将当前选区扩展到浏览器视口坐标下的单元格。
  *
- * Passing `options.anchor` temporarily changes the selection anchor before
- * extending the range. This is what lets a mobile start-handle drag keep the
- * range end fixed, and an end-handle drag keep the range start fixed.
+ * 传入 `options.anchor` 会在扩展选区前临时改变选区锚点。移动端拖拽起点手柄时可固定选区终点，拖拽终点手柄时可固定选区起点。
  *
- * @param {object} spreadsheet x-spreadsheet instance, or its inner `sheet`.
- * @param {number} clientX Browser viewport x coordinate.
- * @param {number} clientY Browser viewport y coordinate.
+ * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
+ * @param {number} clientX 浏览器视口 x 坐标。
+ * @param {number} clientY 浏览器视口 y 坐标。
  * @param {{moving?: boolean, anchor?: {ri: number, ci: number}}} [options]
  * @returns {{ri: number, ci: number, range: object} | null}
  */
@@ -129,11 +121,10 @@ export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, optio
 }
 
 /**
- * Resize or re-render a spreadsheet instance using whichever lifecycle method
- * the host spreadsheet exposes.
+ * 根据宿主 spreadsheet 暴露的生命周期方法执行 resize 或重新渲染。
  *
- * @param {object} spreadsheet x-spreadsheet instance.
- * @returns {object} The spreadsheet instance or the return value of its resize method.
+ * @param {object} spreadsheet x-spreadsheet 实例。
+ * @returns {object} spreadsheet 实例或其 resize 方法返回值。
  */
 export function resizeSpreadsheet(spreadsheet) {
   if (typeof spreadsheet?.resize === 'function') return spreadsheet.resize();
@@ -162,36 +153,33 @@ function defaultNow() {
 }
 
 /**
- * Mount the mobile gesture adapter on a host element.
+ * 在宿主元素上挂载移动端手势适配器。
  *
- * The adapter owns pointer bookkeeping only. Host apps keep control of visual
- * UI: bottom editors, menus, zoom transforms, and selection handles. Every
- * gesture is surfaced through callbacks so the package can stay independent of
- * one fixed product design.
+ * 适配包只维护 pointer 状态。底部编辑器、菜单、缩放 transform 和选区手柄等视觉 UI 由宿主应用控制。所有手势都通过回调暴露，因此适配包不绑定固定产品设计。
  *
- * @param {object} options Adapter options.
- * @param {object} options.spreadsheet x-spreadsheet instance.
- * @param {HTMLElement} options.target Element that receives pointer events.
- * @param {Function} [options.getSelected] Returns host selection state.
- * @param {Function} [options.onSingleTap] Called after a confirmed single tap.
- * @param {Function} [options.onDoubleTap] Called after a confirmed double tap.
- * @param {Function} [options.onLongPress] Called after long press timeout.
- * @param {Function} [options.onRangeDragStart] Called when range drag activates.
- * @param {Function} [options.onRangeDragMove] Called on active range drag moves.
- * @param {Function} [options.onRangeDragEnd] Called when range drag ends.
- * @param {Function} [options.onPinchStart] Called when two active pointers begin pinch.
- * @param {Function} [options.onPinchMove] Called with scale delta during pinch.
- * @param {Function} [options.onPinchEnd] Called when pinch ends.
- * @param {Function} [options.isSelectionHandle] Detects a draggable selection handle.
- * @param {number} [options.longPressMs=550] Long press threshold.
- * @param {number} [options.tapMoveTolerance=10] Movement allowed for a tap.
- * @param {number} [options.dragStartTolerance=14] Movement before range drag starts.
- * @param {number} [options.doubleTapMs=320] Double tap time window.
- * @param {number} [options.doubleTapTolerance=24] Double tap distance window.
- * @param {boolean} [options.edgeScroll=true] Whether range drag auto-scrolls near edges.
- * @param {number} [options.edgeSize=42] Edge zone size in CSS pixels.
- * @param {number} [options.edgeMaxSpeed=18] Max auto-scroll speed per frame.
- * @returns {{destroy: Function}} Adapter controller.
+ * @param {object} options 适配器参数。
+ * @param {object} options.spreadsheet x-spreadsheet 实例。
+ * @param {HTMLElement} options.target 接收 pointer 事件的元素。
+ * @param {Function} [options.getSelected] 返回宿主选区状态。
+ * @param {Function} [options.onSingleTap] 确认单击后调用。
+ * @param {Function} [options.onDoubleTap] 确认双击后调用。
+ * @param {Function} [options.onLongPress] 长按达到阈值后调用。
+ * @param {Function} [options.onRangeDragStart] 选区拖拽激活时调用。
+ * @param {Function} [options.onRangeDragMove] 活跃选区拖拽移动时调用。
+ * @param {Function} [options.onRangeDragEnd] 选区拖拽结束时调用。
+ * @param {Function} [options.onPinchStart] 两个活跃 pointer 开始捏合时调用。
+ * @param {Function} [options.onPinchMove] 捏合过程中带缩放增量调用。
+ * @param {Function} [options.onPinchEnd] 捏合结束时调用。
+ * @param {Function} [options.isSelectionHandle] 检测可拖拽选区手柄。
+ * @param {number} [options.longPressMs=550] 长按阈值。
+ * @param {number} [options.tapMoveTolerance=10] 点击允许的移动距离。
+ * @param {number} [options.dragStartTolerance=14] 进入选区拖拽前需要达到的移动距离。
+ * @param {number} [options.doubleTapMs=320] 双击时间窗口。
+ * @param {number} [options.doubleTapTolerance=24] 双击距离窗口。
+ * @param {boolean} [options.edgeScroll=true] 选区拖拽靠近边缘时是否自动滚动。
+ * @param {number} [options.edgeSize=42] 边缘触发区域大小，单位为 CSS 像素。
+ * @param {number} [options.edgeMaxSpeed=18] 每帧最大自动滚动速度。
+ * @returns {{destroy: Function}} 适配器控制器。
  */
 export function mountMobileSpreadsheetAdapter(options) {
   const {
@@ -219,12 +207,11 @@ export function mountMobileSpreadsheetAdapter(options) {
   } = options || {};
 
   if (!target) {
-    throw new Error('mountMobileSpreadsheetAdapter requires a target element.');
+    throw new Error('mountMobileSpreadsheetAdapter 需要传入 target 元素。');
   }
 
   const state = {
-    // Keep gesture arbitration private to the adapter: host apps only receive
-    // resolved callbacks such as tap, range drag, long press, and pinch.
+    // 手势仲裁封装在适配包内部，宿主只接收已经判定好的单击、拖选、长按、捏合等回调。
     pointers: new Map(),
     tapStart: null,
     lastTap: null,
@@ -266,7 +253,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     const endpoints = getRangeStartEnd(range);
     if (!endpoints) return null;
     const role = handle.dataset?.mobileSelectionHandle || handle.getAttribute?.('data-mobile-selection-handle') || 'end';
-    // Dragging one handle keeps the opposite corner fixed as the range anchor.
+    // 拖拽某个手柄时，将对角固定为选区锚点。
     return {
       handle,
       role,
@@ -299,8 +286,7 @@ export function mountMobileSpreadsheetAdapter(options) {
       state.edgeScrollFrame = 0;
       return;
     }
-    // Keep extending the range while the sheet scrolls near the viewport edge,
-    // so users can select cells beyond the currently visible area.
+    // 靠近视口边缘滚动表格时持续扩展选区，使用户能选到当前可视区域之外的单元格。
     const { dx, dy } = edgeDelta(state.edgeScrollPoint.clientX, state.edgeScrollPoint.clientY);
     const { horizontal, vertical } = getScrollbars(spreadsheet);
     moveScrollbar(horizontal, 'left', dx);
@@ -341,8 +327,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     const moved = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
     if (!drag.active && moved < dragStartTolerance) return false;
 
-    // From this point on, the stream is a range gesture. Native scrolling is
-    // prevented only after the threshold, keeping ordinary sheet scroll fluid.
+    // 超过阈值后，这段 pointer 流才被认定为选区手势。只在此时阻止原生滚动，保证普通表格滚动仍然顺滑。
     drag.active = true;
     event.preventDefault();
     clearLongPress();

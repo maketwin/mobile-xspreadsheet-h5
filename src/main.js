@@ -541,8 +541,7 @@ function enterEditMode() {
   hideLongPressMenu();
   setEditing(true);
   setEditorType(state.editorType, true);
-  // Mobile WebViews often report keyboard viewport changes in phases. A short
-  // sync burst lets the bottom editor and spreadsheet canvas settle together.
+  // 移动端 WebView 往往会分阶段上报键盘视口变化。这里短时间多次同步，让底部编辑器和表格 canvas 一起稳定下来。
   scheduleKeyboardSync();
   scheduleViewportUpdate(180, true);
 }
@@ -672,8 +671,7 @@ function updateSelectionHandles() {
     els.selectionHandles?.classList.add('hidden');
     return;
   }
-  // x-spreadsheet renders the selected area. The demo overlays mobile-sized
-  // touch handles on top instead of changing the spreadsheet renderer.
+  // 选区本身仍由 x-spreadsheet 渲染。demo 只在其上叠加适合移动端触摸的手柄，不改表格渲染器。
   const rect = selectedRangeClientRect(state.spreadsheet);
   const hostRect = els.gestureLayer.getBoundingClientRect();
   if (!rect || rect.width <= 0 || rect.height <= 0) {
@@ -738,8 +736,7 @@ function showGestureTip(message) {
 function syncKeyboardOffset() {
   const vv = window.visualViewport;
   const mobileViewport = window.matchMedia('(max-width: 739px)').matches;
-  // visualViewport is the most reliable way to measure software keyboard
-  // intrusion on iOS Safari and Android WebView.
+  // visualViewport 是衡量 iOS Safari 和 Android WebView 软键盘遮挡最可靠的方式。
   const rawOffset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
   const offset = rawOffset;
   state.keyboardOffset = offset;
@@ -778,8 +775,7 @@ function getSheetViewportSize() {
   const availableHeight = visibleHeight - topbarHeight - editorHeight - 6;
 
   return {
-    // The sheet is scaled by the host layer, so the internal canvas needs the
-    // inverse logical size to keep coordinates and rendering aligned.
+    // 表格由宿主层缩放，因此内部 canvas 需要使用反向逻辑尺寸，保证坐标和渲染对齐。
     width: Math.max(320, Math.floor(appWidth / state.scale)),
     height: Math.max(220, Math.floor(availableHeight / state.scale)),
   };
@@ -827,8 +823,7 @@ function scheduleViewportUpdate(delay = 0, force = false) {
     state.lastViewportSize = size;
     els.scaleLayer.style.minWidth = `${size.width}px`;
     els.scaleLayer.style.minHeight = `${size.height}px`;
-    // Resize after editor/keyboard/zoom changes, then restore host scroll
-    // offsets so the canvas does not visibly jump.
+    // 编辑器、键盘或缩放变化后重新 resize 表格，再恢复宿主滚动位置，避免 canvas 可见跳动。
     resizeSpreadsheet(state.spreadsheet);
     els.gestureLayer.scrollLeft = scrollLeft;
     els.gestureLayer.scrollTop = scrollTop;

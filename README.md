@@ -1,66 +1,57 @@
 # Mobile X-Spreadsheet H5
 
-H5 mobile spreadsheet demo based on `x-data-spreadsheet`.
+基于 `x-data-spreadsheet` 的 H5 移动端 Excel 适配 demo。
 
-## Features
+## 功能
 
-- Renders Excel-like grid with vendored `x-data-spreadsheet` source
-- Mobile bottom cell editor
-- Text, number, and date editing
-- Cell value commit back to spreadsheet
-- Pinch-to-zoom gesture layer
-- Keyboard offset handling with `visualViewport`
-- Mobile long-press cell menu
-- Mobile drag range selection and selection resize handles
-- Non-invasive mobile adapter package with type declarations
+- 渲染类 Excel 的 canvas 表格
+- 移动端底部单元格编辑器
+- 文本、数字、日期编辑
+- 单元格内容回写到表格
+- 双指捏合缩放手势层
+- 基于 `visualViewport` 的键盘遮挡适配
+- 移动端长按单元格菜单
+- 移动端拖拽框选和选区手柄调整
+- 非侵入式移动适配包和类型声明
 
-## Spreadsheet Base Boundary
+## Excel 基座边界
 
-The spreadsheet engine source is vendored under:
+Excel 引擎源码放在：
 
 ```text
 src/vendor/x-spreadsheet
 ```
 
-The current direction is to keep this Excel base stable. Mobile-specific
-behavior should be implemented through the adapter package and demo integration
-layer, not by modifying `src/vendor/x-spreadsheet`.
+当前方向是保持 Excel 基座稳定。移动端能力应通过适配包和 demo 接入层实现，不再修改 `src/vendor/x-spreadsheet`。
 
-Adapter boundary:
+适配包边界：
 
-- Allowed: read the spreadsheet runtime instance and DOM geometry, call existing
-  selection/render/resize APIs, and surface mobile gestures through callbacks.
-- Not allowed: patch the spreadsheet renderer, fork internal modules, or put
-  mobile UI directly into the Excel base.
-- Host-owned: bottom editor, long-press menu, selection handles, zoom UI, data
-  persistence, permissions, and analytics.
+- 允许：读取 spreadsheet 运行时实例和 DOM 几何信息，调用已有选区、渲染、resize 能力，通过回调暴露移动端手势。
+- 不允许：修改表格渲染器、fork 内部模块、把移动端 UI 写入 Excel 基座。
+- 宿主负责：底部编辑器、长按菜单、选区手柄、缩放 UI、数据保存、权限和埋点。
 
-## Mobile Adapter Package
+## 移动端适配包
 
-New mobile-specific behavior should live outside the spreadsheet base.
+新增移动端能力应放在 Excel 基座之外。
 
-The adapter package is located at:
+适配包位置：
 
 ```text
 packages/mobile-spreadsheet-adapter
 ```
 
-It provides a non-invasive `mountMobileSpreadsheetAdapter` entry plus helper
-APIs for mobile adaptation, including client-point cell lookup, drag range
-selection, selection resize handles, edge auto-scroll while selecting, pinch
-gesture callbacks, and spreadsheet resize bridging.
+它提供非侵入式入口 `mountMobileSpreadsheetAdapter`，以及一组移动端适配 helper，包括：客户端坐标转单元格、拖拽框选、选区手柄调整、边缘自动滚动、双指捏合回调、表格 resize 桥接。
 
-The package includes JSDoc comments and `src/index.d.ts` so business projects
-can get editor hints when integrating it.
+适配包已补齐 JSDoc 注释和 `src/index.d.ts` 类型声明，业务项目接入时可以获得编辑器提示。
 
-## Local Preview
+## 本地预览
 
 ```bash
 npm install
 npm run dev -- --host 0.0.0.0 --port 3462
 ```
 
-Open:
+打开：
 
 ```text
 http://127.0.0.1:3462/
@@ -68,12 +59,12 @@ http://127.0.0.1:3462/
 
 ## GitHub Pages
 
-The project includes `.github/workflows/pages.yml`.
+项目包含 `.github/workflows/pages.yml`。
 
-After pushing to a GitHub repository, enable Pages with GitHub Actions as the source:
+推送到 GitHub 仓库后，将 Pages 的来源设置为 GitHub Actions：
 
 ```bash
 gh api --method POST repos/OWNER/REPO/pages -f build_type=workflow
 ```
 
-Then push to `main` or manually run the `Deploy GitHub Pages` workflow.
+之后推送到 `main`，或手动运行 `Deploy GitHub Pages` workflow。

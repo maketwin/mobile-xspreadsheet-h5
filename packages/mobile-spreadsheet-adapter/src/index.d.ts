@@ -1,123 +1,122 @@
 export interface CellPoint {
-  /** Zero-based row index. */
+  /** 从 0 开始的行索引。 */
   ri: number;
-  /** Zero-based column index. */
+  /** 从 0 开始的列索引。 */
   ci: number;
 }
 
 export interface CellRect extends CellPoint {
-  /** Left offset in the spreadsheet overlay coordinate space. */
+  /** 在表格覆盖层坐标系中的 left 偏移。 */
   left: number;
-  /** Top offset in the spreadsheet overlay coordinate space. */
+  /** 在表格覆盖层坐标系中的 top 偏移。 */
   top: number;
-  /** Cell width in spreadsheet overlay pixels. */
+  /** 单元格宽度，单位为表格覆盖层像素。 */
   width: number;
-  /** Cell height in spreadsheet overlay pixels. */
+  /** 单元格高度，单位为表格覆盖层像素。 */
   height: number;
 }
 
 export interface CellRange {
-  /** Start row index. */
+  /** 起始行索引。 */
   sri: number;
-  /** Start column index. */
+  /** 起始列索引。 */
   sci: number;
-  /** End row index. */
+  /** 结束行索引。 */
   eri: number;
-  /** End column index. */
+  /** 结束列索引。 */
   eci: number;
-  /** x-spreadsheet range helper, when available. */
+  /** x-spreadsheet 提供的选区判断方法，可用时存在。 */
   includes?: (ri: number, ci: number) => boolean;
-  /** Whether the range contains more than one cell, when available. */
+  /** 判断选区是否包含多个单元格，可用时存在。 */
   multiple?: () => boolean;
-  /** Range size as [rowCount, columnCount], when available. */
+  /** 选区大小，格式为 [行数, 列数]，可用时存在。 */
   size?: () => [number, number];
-  /** Spreadsheet address representation, when available. */
+  /** 表格地址字符串表示，可用时存在。 */
   toString?: () => string;
 }
 
 export interface RangeSelectionResult extends CellPoint {
-  /** The resulting selected range after drag/handle movement. */
+  /** 拖拽或手柄移动后的选区结果。 */
   range: CellRange | null;
 }
 
 export interface PinchState {
-  /** Distance between two pointers at pinch start. */
+  /** 捏合开始时两个 pointer 之间的距离。 */
   startDistance: number;
-  /** Current distance between two pointers. */
+  /** 当前两个 pointer 之间的距离。 */
   currentDistance?: number;
-  /** currentDistance / startDistance. */
+  /** currentDistance / startDistance。 */
   scaleDelta?: number;
-  /** Optional host-provided base scale copied onto the pinch object. */
+  /** 宿主可选写入的基础缩放值。 */
   baseScale?: number;
 }
 
 export interface HostSelection extends Partial<CellPoint> {
-  /** Current selected cell text tracked by the host app. */
+  /** 宿主应用维护的当前单元格文本。 */
   text?: string;
-  /** Current selected range tracked by the host app. */
+  /** 宿主应用维护的当前选区。 */
   range?: CellRange | null;
 }
 
 export interface SelectRangeEndOptions {
-  /** Pass false for the final range update after pointer release. */
+  /** pointer 释放后的最后一次选区更新可传 false。 */
   moving?: boolean;
-  /** Fixed range anchor used when dragging selection handles. */
+  /** 拖拽选区手柄时使用的固定选区锚点。 */
   anchor?: CellPoint | null;
 }
 
 export interface MobileSpreadsheetAdapterOptions {
-  /** x-spreadsheet instance. */
+  /** x-spreadsheet 实例。 */
   spreadsheet: unknown;
-  /** Element receiving pointer events, usually a gesture layer above the sheet. */
+  /** 接收 pointer 事件的元素，通常是表格上方的手势层。 */
   target: HTMLElement;
-  /** Returns the host app's latest selection state. */
+  /** 返回宿主应用最新的选区状态。 */
   getSelected?: () => HostSelection | null | undefined;
-  /** Called after a confirmed single tap. */
+  /** 确认单击后调用。 */
   onSingleTap?: (event: PointerEvent) => void;
-  /** Called after a confirmed double tap. */
+  /** 确认双击后调用。 */
   onDoubleTap?: (event: PointerEvent) => void;
-  /** Called when a press stays stable longer than longPressMs. */
+  /** 稳定按压超过 longPressMs 后调用。 */
   onLongPress?: (event: PointerEvent) => void;
-  /** Called once range dragging crosses dragStartTolerance. */
+  /** 选区拖拽超过 dragStartTolerance 后调用一次。 */
   onRangeDragStart?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
-  /** Called while an active drag changes the selected range. */
+  /** 活跃拖拽改变选区时调用。 */
   onRangeDragMove?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
-  /** Called when an active range drag ends. */
+  /** 活跃选区拖拽结束时调用。 */
   onRangeDragEnd?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
-  /** Called when two active pointers begin a pinch. */
+  /** 两个活跃 pointer 开始捏合时调用。 */
   onPinchStart?: (pinch: PinchState, event: PointerEvent) => void;
-  /** Called while pinch distance changes. */
+  /** 捏合距离变化时调用。 */
   onPinchMove?: (pinch: PinchState, event: PointerEvent) => void;
-  /** Called when a pinch ends. */
+  /** 捏合结束时调用。 */
   onPinchEnd?: (pinch: PinchState, event: PointerEvent) => void;
-  /** Detects a host-rendered selection handle from a pointer event. */
+  /** 从 pointer 事件中检测宿主渲染的选区手柄。 */
   isSelectionHandle?: (event: PointerEvent) => Element | null | undefined;
-  /** Long press threshold in milliseconds. Defaults to 550. */
+  /** 长按阈值，单位毫秒。默认 550。 */
   longPressMs?: number;
-  /** Movement tolerance for stable taps. Defaults to 10 CSS pixels. */
+  /** 稳定点击允许的移动距离。默认 10 CSS 像素。 */
   tapMoveTolerance?: number;
-  /** Movement required before a range drag starts. Defaults to 14 CSS pixels. */
+  /** 进入选区拖拽前需要达到的移动距离。默认 14 CSS 像素。 */
   dragStartTolerance?: number;
-  /** Double tap time window in milliseconds. Defaults to 320. */
+  /** 双击时间窗口，单位毫秒。默认 320。 */
   doubleTapMs?: number;
-  /** Double tap distance tolerance. Defaults to 24 CSS pixels. */
+  /** 双击距离容差。默认 24 CSS 像素。 */
   doubleTapTolerance?: number;
-  /** Whether range drag auto-scrolls near the viewport edge. Defaults to true. */
+  /** 选区拖拽靠近视口边缘时是否自动滚动。默认 true。 */
   edgeScroll?: boolean;
-  /** Edge zone size for auto-scroll. Defaults to 42 CSS pixels. */
+  /** 自动滚动边缘区域大小。默认 42 CSS 像素。 */
   edgeSize?: number;
-  /** Max auto-scroll delta per animation frame. Defaults to 18. */
+  /** 每个动画帧的最大自动滚动增量。默认 18。 */
   edgeMaxSpeed?: number;
 }
 
 export interface MobileSpreadsheetAdapter {
-  /** Remove listeners, timers, and animation frames owned by the adapter. */
+  /** 移除适配器持有的监听器、定时器和动画帧。 */
   destroy: () => void;
 }
 
 /**
- * Convert a browser viewport point to the spreadsheet cell rectangle returned
- * by the x-spreadsheet data model.
+ * 将浏览器视口坐标转换为 x-spreadsheet 数据模型返回的单元格矩形。
  */
 export function cellRectByClientPoint(
   spreadsheet: unknown,
@@ -126,7 +125,7 @@ export function cellRectByClientPoint(
 ): CellRect | null;
 
 /**
- * Test whether a row/column index is inside the current selected range.
+ * 判断行列索引是否位于当前选区内。
  */
 export function selectedRangeIncludes(
   spreadsheet: unknown,
@@ -135,18 +134,17 @@ export function selectedRangeIncludes(
 ): boolean;
 
 /**
- * Read the current selected range from the spreadsheet runtime.
+ * 读取 spreadsheet 运行时的当前选区。
  */
 export function getSelectedRange(spreadsheet: unknown): CellRange | null;
 
 /**
- * Return the current selected range's rendered DOM rectangle in viewport
- * coordinates.
+ * 返回当前选区渲染后的 DOM 矩形，坐标为浏览器视口坐标。
  */
 export function selectedRangeClientRect(spreadsheet: unknown): DOMRect | null;
 
 /**
- * Extend the current selected range to the cell under a browser viewport point.
+ * 将当前选区扩展到浏览器视口坐标下的单元格。
  */
 export function selectRangeEndByClientPoint(
   spreadsheet: unknown,
@@ -156,13 +154,12 @@ export function selectRangeEndByClientPoint(
 ): RangeSelectionResult | null;
 
 /**
- * Resize or re-render a spreadsheet instance using whichever lifecycle method
- * the host spreadsheet exposes.
+ * 根据宿主 spreadsheet 暴露的生命周期方法执行 resize 或重新渲染。
  */
 export function resizeSpreadsheet<T = unknown>(spreadsheet: T): T;
 
 /**
- * Mount the mobile gesture adapter on a host element.
+ * 在宿主元素上挂载移动端手势适配器。
  */
 export function mountMobileSpreadsheetAdapter(
   options: MobileSpreadsheetAdapterOptions,
