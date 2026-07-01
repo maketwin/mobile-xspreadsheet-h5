@@ -207,7 +207,7 @@ interface AdapterState {
   pointers: Map<number, PointerEvent>;
   tapStart: TapStart | null;
   lastTap: LastTap | null;
-  longPressTimer: ReturnType<typeof window.setTimeout> | 0;
+  longPressTimer: number | ReturnType<typeof setTimeout>;
   longPressPointerId: number | null;
   longPressStart: { x: number; y: number } | null;
   longPressTriggered: boolean;
@@ -227,7 +227,9 @@ function getSheet(spreadsheet: unknown): SheetLike | null {
 }
 
 function getElement<T extends HTMLElement>(value?: ElementWrapper<T> | T): T | undefined {
-  return value && 'el' in value ? value.el : value;
+  if (!value) return undefined;
+  if (typeof value === 'object' && 'el' in value) return (value as ElementWrapper<T>).el;
+  return value as T;
 }
 
 function getOverlayElement(sheet: SheetLike | null): HTMLElement | undefined {

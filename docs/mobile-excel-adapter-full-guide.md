@@ -573,6 +573,12 @@ npm run dev -- --host 127.0.0.1 --port 3463
 npm test
 ```
 
+运行类型检查：
+
+```bash
+npm run typecheck
+```
+
 构建：
 
 ```bash

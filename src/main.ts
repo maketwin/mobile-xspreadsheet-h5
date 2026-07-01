@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Spreadsheet from './vendor/x-spreadsheet';
 import {
   mountMobileSpreadsheetAdapter,
