@@ -44,6 +44,28 @@ packages/mobile-spreadsheet-adapter
 
 适配包已补齐 JSDoc 注释和 `src/index.ts` 类型定义，业务项目接入时可以获得编辑器提示。
 
+适配包文件目录：
+
+```text
+packages/mobile-spreadsheet-adapter/src
+├── index.ts      # 统一导出入口
+├── types.ts      # 公开类型和内部运行时类型
+├── runtime.ts    # spreadsheet/sheet/DOM/滚动条兼容方法
+├── selection.ts  # 坐标转换和选区桥接方法
+├── gesture.ts    # 移动端 pointer 手势状态机
+└── index.test.ts # 单元测试
+```
+
+demo 接入层目录：
+
+```text
+src/demo
+├── template.ts    # 页面模板和 DOM 节点收集
+├── sheet-data.ts  # 示例数据和性能测试数据
+├── cell-format.ts # 单元格地址、选区地址、日期格式化
+└── perf.ts        # 性能测试逻辑
+```
+
 ## 完整文档
 
 - [H5 Excel 移动端适配完整中文文档](docs/mobile-excel-adapter-full-guide.md)

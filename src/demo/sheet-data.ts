@@ -1,5 +1,6 @@
 export const columns = ['项目组', '版本', '负责人', '系统', '需求说明', '日期', '状态'];
 
+/** demo 首屏使用的基础排期数据。 */
 export const rows = [
   ['移动组', '0.3', '郭绵翔', 'OA', '云OA与工作桶解耦', '2026-06-08', '进行中'],
   ['移动组', '0.1', '李良国', '回放', '回放24-O1、O2、O3', '2026-06-09', '已完成'],
@@ -18,6 +19,9 @@ export const rows = [
   ['WEB一组', '1.4', '冯亦磊', 'ERP', 'ERP产品线独立', '2026-06-22', '已完成'],
 ];
 
+/**
+ * 构建首屏演示表格数据，保持数据量较小，便于调试移动端交互。
+ */
 export function buildSheetData() {
   const cells: Record<number, Record<number, { text: string; style: number }>> = {};
   cells[0] = {};
@@ -58,6 +62,9 @@ export function buildSheetData() {
   };
 }
 
+/**
+ * 构建大数据量性能测试表格，支持指定行数和列数。
+ */
 export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
   const cells: Record<number, Record<number, { text: string; style: number }>> = {};
   const statusValues = ['进行中', '待确认', '已完成', '风险'];

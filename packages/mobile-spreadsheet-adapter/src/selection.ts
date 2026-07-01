@@ -46,6 +46,9 @@ export function getSelectedRange(spreadsheet: unknown): CellRange | null {
   return sheet?.selector?.range || sheet?.data?.selector?.range || null;
 }
 
+/**
+ * 将选区范围拆成起点和终点，供手柄拖拽时计算固定锚点使用。
+ */
 export function getRangeStartEnd(range: CellRange | null): RangeEndpoints | null {
   if (!range) return null;
   return {
@@ -54,6 +57,9 @@ export function getRangeStartEnd(range: CellRange | null): RangeEndpoints | null
   };
 }
 
+/**
+ * 同步 x-spreadsheet 内部 selector 锚点，让后续 setEnd 从指定单元格开始扩展。
+ */
 export function setSelectionAnchor(sheet: SheetLike | null, anchor: CellPoint | null | undefined): void {
   if (!sheet || !anchor) return;
   // x-spreadsheet 会基于 selector indexes 扩展选区。这里同步更新运行时 selector 对象，让手柄调整能力无需 patch 表格基座。

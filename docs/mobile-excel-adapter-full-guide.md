@@ -109,6 +109,96 @@ mobile-xspreadsheet-h5
 └── package-lock.json
 ```
 
+### 5.1 文件内容说明
+
+| 文件 | 分类 | 内容说明 |
+| --- | --- | --- |
+| `packages/mobile-spreadsheet-adapter/src/index.ts` | 适配包入口 | 只做统一导出，业务方从这里引入类型、手势挂载方法、选区 helper 和 resize helper。 |
+| `packages/mobile-spreadsheet-adapter/src/types.ts` | 适配包类型 | 定义公开 API 类型、x-spreadsheet 最小运行时接口、手势状态、拖选状态和内部状态结构。 |
+| `packages/mobile-spreadsheet-adapter/src/runtime.ts` | 运行时兼容 | 负责把未知 spreadsheet 实例收窄为适配包需要的结构，读取 sheet、DOM、滚动条，并桥接 resize/reload/reRender。 |
+| `packages/mobile-spreadsheet-adapter/src/selection.ts` | 选区桥接 | 负责坐标转换、读取当前选区、判断选区包含关系、定位选区 DOM、通过基座已有 selector 扩展选区。 |
+| `packages/mobile-spreadsheet-adapter/src/gesture.ts` | 手势运行时 | 负责 pointer 状态机，识别单击、双击、长按、拖选、选区手柄拖拽、边缘自动滚动和双指捏合。 |
+| `packages/mobile-spreadsheet-adapter/src/index.test.ts` | 单元测试 | 验证坐标转换、选区扩展、手势判定、长按、双击、拖选、捏合、destroy 清理等能力。 |
+| `src/demo/template.ts` | demo 视图 | 渲染移动端 demo DOM，并集中收集页面节点。 |
+| `src/demo/sheet-data.ts` | demo 数据 | 提供首屏排期数据和性能测试用大表格数据。 |
+| `src/demo/cell-format.ts` | demo 格式化 | 提供单元格地址、选区地址和日期输入值格式化。 |
+| `src/demo/perf.ts` | demo 性能测试 | 包装 `table.render` 统计渲染耗时，并执行生成、加载、滚动压测。 |
+| `src/main.ts` | demo 编排 | 创建 spreadsheet，接入 adapter，管理编辑器、键盘、缩放、长按菜单、手柄和视口 resize。 |
+| `src/styles.css` | demo 样式 | 定义移动端视口、底部编辑器、长按菜单、选区手柄、键盘状态和缩放状态样式。 |
+| `src/vendor/x-spreadsheet` | Excel 基座 | vendored x-spreadsheet 引擎源码，当前方案要求不再修改该目录。 |
+
+### 5.2 适配包方法索引
+
+| 文件 | 方法 | 备注 |
+| --- | --- | --- |
+| `runtime.ts` | `asSpreadsheet(spreadsheet)` | 将未知实例转换为适配包使用的最小 spreadsheet 结构。 |
+| `runtime.ts` | `getSheet(spreadsheet)` | 兼容传入 spreadsheet 实例或 sheet 对象两种方式，返回当前工作表。 |
+| `runtime.ts` | `getElement(value)` | 兼容 x-spreadsheet 的 ElementWrapper 和原生 HTMLElement。 |
+| `runtime.ts` | `getOverlayElement(sheet)` | 获取表格覆盖层 DOM，供坐标换算使用。 |
+| `runtime.ts` | `resizeSpreadsheet(spreadsheet)` | 按 `resize`、`reload`、`reRender` 顺序调用宿主已有重绘能力。 |
+| `runtime.ts` | `getScrollbars(spreadsheet)` | 读取横向和纵向滚动条，供边缘自动滚动使用。 |
+| `runtime.ts` | `moveScrollbar(scrollbar, key, delta)` | 基于当前滚动值移动滚动条，并保证不滚到负值。 |
+| `runtime.ts` | `defaultNow()` | 封装 `performance.now()`，便于后续测试替换。 |
+| `selection.ts` | `cellRectByClientPoint(spreadsheet, clientX, clientY)` | 将浏览器视口坐标转换为表格内部单元格矩形，兼容宿主 CSS 缩放。 |
+| `selection.ts` | `selectedRangeIncludes(spreadsheet, ri, ci)` | 判断某个行列是否在当前选区内。 |
+| `selection.ts` | `getSelectedRange(spreadsheet)` | 从运行时 selector 读取当前选区。 |
+| `selection.ts` | `getRangeStartEnd(range)` | 将选区拆成起点和终点，供手柄拖拽计算锚点。 |
+| `selection.ts` | `setSelectionAnchor(sheet, anchor)` | 同步 selector 锚点，让后续 `setEnd` 从指定位置扩展。 |
+| `selection.ts` | `selectedRangeClientRect(spreadsheet)` | 读取当前选区 DOM 矩形，用于定位自定义手柄。 |
+| `selection.ts` | `selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options)` | 将当前选区扩展到触点所在单元格，并触发基座选区事件和渲染。 |
+| `gesture.ts` | `mountMobileSpreadsheetAdapter(options)` | 挂载移动端 pointer 状态机，返回带 `destroy()` 的控制器。 |
+| `gesture.ts` | `clearLongPress()` | 清理长按计时器和长按起点，避免不同手势互相误触发。 |
+| `gesture.ts` | `stopEdgeScroll()` | 停止边缘自动滚动并清空拖拽坐标。 |
+| `gesture.ts` | `selectedIncludesPoint(event)` | 判断触点是否在当前选区内，决定是否允许拖选。 |
+| `gesture.ts` | `getHandleDrag(event)` | 识别选区手柄，并计算固定不动的对角锚点。 |
+| `gesture.ts` | `edgeDelta(clientX, clientY)` | 根据触点距离容器边缘的距离计算滚动速度。 |
+| `gesture.ts` | `runEdgeScroll()` | 持续执行边缘滚动，并同步扩展选区。 |
+| `gesture.ts` | `updateEdgeScroll(event)` | 根据最新触点开启、更新或停止边缘滚动。 |
+| `gesture.ts` | `handleRangeDragMove(event)` | 处理拖选移动，超过阈值后阻止默认滚动并更新选区。 |
+| `gesture.ts` | `finishRangeDrag(event)` | 结束拖选，提交最终选区并回调宿主。 |
+| `gesture.ts` | `handleTapEnd(event)` | 在 pointer 结束时区分稳定点击、单击和双击。 |
+| `gesture.ts` | `onPointerDown(event)` | 初始化点击、长按、拖选、手柄拖拽或捏合状态。 |
+| `gesture.ts` | `onPointerMove(event)` | 处理拖选、长按取消和双指缩放。 |
+| `gesture.ts` | `onPointerUp(event)` | 收束拖选、点击、长按和捏合状态。 |
+| `gesture.ts` | `destroy()` | 卸载事件监听、计时器和动画帧。 |
+
+### 5.3 Demo 方法索引
+
+| 文件 | 方法 | 备注 |
+| --- | --- | --- |
+| `template.ts` | `renderAppShell(app)` | 渲染 demo 的移动端页面结构。 |
+| `template.ts` | `createDemoElements()` | 集中收集页面运行时需要的 DOM 节点。 |
+| `sheet-data.ts` | `buildSheetData()` | 构建首屏小数据量排期表。 |
+| `sheet-data.ts` | `buildLargeSheetData(rowCount, colCount)` | 构建性能测试用大数据量表格。 |
+| `cell-format.ts` | `toColumnName(index)` | 将列索引转换为 Excel 风格列名。 |
+| `cell-format.ts` | `formatCellAddress(ri, ci)` | 格式化单元格地址。 |
+| `cell-format.ts` | `formatRangeAddress(range)` | 格式化单格或多格选区地址。 |
+| `cell-format.ts` | `normalizeDate(text)` | 将文本归一为 date input 可识别的日期值。 |
+| `perf.ts` | `resetPerfMetrics(state)` | 重置渲染耗时统计。 |
+| `perf.ts` | `installPerfHooks(state)` | 包装 `table.render`，记录每次渲染耗时。 |
+| `perf.ts` | `nextFrame()` | 等待两帧，确保浏览器完成布局绘制。 |
+| `perf.ts` | `formatMs(value)` | 将耗时格式化为展示文本。 |
+| `perf.ts` | `updatePerfPanel(els, result, running)` | 更新页面性能测试面板。 |
+| `perf.ts` | `runSpreadsheetPerf(state, els, showGestureTip, rowCount, colCount)` | 执行生成、加载、滚动和渲染统计。 |
+| `main.ts` | `runSpreadsheetPerf(rowCount, colCount)` | demo 对外暴露的性能测试入口。 |
+| `main.ts` | `initSpreadsheet()` | 创建 spreadsheet 实例并绑定基础事件。 |
+| `main.ts` | `updateSelection(cell, ri, ci)` | 同步单格选中状态到编辑器、菜单和手柄。 |
+| `main.ts` | `updateRangeSelection(cell, range)` | 同步多格选区状态和选区地址。 |
+| `main.ts` | `setEditing(isEditing)` | 控制底部编辑栏显示并触发视口重算。 |
+| `main.ts` | `setEditorType(type, focus)` | 切换文本、数字、日期编辑模式。 |
+| `main.ts` | `commitValue(value)` | 将编辑值写回表格并关闭编辑器。 |
+| `main.ts` | `enterEditMode()` | 进入双击编辑模式并同步键盘视口。 |
+| `main.ts` | `copySelectedCell()` | 复制当前选区文本。 |
+| `main.ts` | `clearSelectedCell()` | 清空当前选中单元格。 |
+| `main.ts` | `setScale(nextScale, options)` | 设置缩放比例并重算表格逻辑尺寸。 |
+| `main.ts` | `showLongPressMenu(clientX, clientY)` | 计算并展示长按菜单位置。 |
+| `main.ts` | `updateSelectionHandles()` | 根据真实选区 DOM 刷新移动端手柄。 |
+| `main.ts` | `mountAdapter()` | 挂载适配包并连接 demo UI 回调。 |
+| `main.ts` | `syncKeyboardOffset()` | 基于 `visualViewport` 同步软键盘遮挡。 |
+| `main.ts` | `getSheetViewportSize()` | 计算表格内部逻辑视口尺寸。 |
+| `main.ts` | `scheduleViewportUpdate(delay, force)` | 合并 resize 请求，保留滚动位置并刷新手柄。 |
+| `main.ts` | `bindEvents()` | 绑定按钮、输入框、键盘和视口事件。 |
+
 ## 6. 移动端交互规则
 
 当前交互定义：

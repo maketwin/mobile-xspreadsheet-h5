@@ -20,6 +20,37 @@
 - 不假设固定的编辑器 UI。
 - 不接管业务数据或持久化。
 
+## 文件目录
+
+```text
+src
+├── index.ts      # 统一导出入口，业务方只需要从这里引入
+├── types.ts      # 类型定义，包含公开 API 类型和内部运行时最小接口
+├── runtime.ts    # 运行时兼容层，处理 spreadsheet/sheet/DOM/滚动条
+├── selection.ts  # 选区桥接层，处理坐标转换、选区读取和选区扩展
+├── gesture.ts    # 手势运行时，处理单击、双击、长按、拖选、捏合
+└── index.test.ts # 单元测试，不进入发布包
+```
+
+## 方法备注
+
+| 文件 | 方法 | 备注 |
+| --- | --- | --- |
+| `runtime.ts` | `asSpreadsheet` | 将未知实例转换为适配包需要的最小 spreadsheet 结构。 |
+| `runtime.ts` | `getSheet` | 兼容 spreadsheet 实例或 sheet 对象，返回当前工作表。 |
+| `runtime.ts` | `getElement` | 兼容 x-spreadsheet ElementWrapper 和原生 HTMLElement。 |
+| `runtime.ts` | `getOverlayElement` | 获取表格覆盖层 DOM，用于坐标换算。 |
+| `runtime.ts` | `resizeSpreadsheet` | 调用宿主已有 resize/reload/reRender 能力。 |
+| `runtime.ts` | `getScrollbars` | 获取横向和纵向滚动条。 |
+| `runtime.ts` | `moveScrollbar` | 移动滚动条，用于边缘自动滚动。 |
+| `selection.ts` | `cellRectByClientPoint` | 将浏览器坐标转换为表格单元格 rect。 |
+| `selection.ts` | `selectedRangeIncludes` | 判断单元格是否位于当前选区内。 |
+| `selection.ts` | `getSelectedRange` | 读取当前运行时选区。 |
+| `selection.ts` | `selectedRangeClientRect` | 读取当前选区 DOM 矩形，供自定义手柄定位。 |
+| `selection.ts` | `selectRangeEndByClientPoint` | 将选区扩展到触点所在单元格，并触发基座选区事件。 |
+| `gesture.ts` | `mountMobileSpreadsheetAdapter` | 挂载移动端手势状态机，返回 `destroy()` 控制器。 |
+| `gesture.ts` | `destroy` | 卸载事件监听、计时器和动画帧。 |
+
 ## 基础用法
 
 ```js

@@ -59,6 +59,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     edgeScrollPoint: null,
   };
 
+  /**
+   * 清理长按计时器和长按起点，避免点击、拖选、捏合之间互相误触发。
+   */
   function clearLongPress(): void {
     window.clearTimeout(state.longPressTimer);
     state.longPressTimer = 0;
@@ -66,12 +69,18 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     state.longPressStart = null;
   }
 
+  /**
+   * 停止边缘自动滚动，并清空最后一次拖拽坐标。
+   */
   function stopEdgeScroll(): void {
     if (state.edgeScrollFrame) window.cancelAnimationFrame(state.edgeScrollFrame);
     state.edgeScrollFrame = 0;
     state.edgeScrollPoint = null;
   }
 
+  /**
+   * 判断 pointer 起点是否落在当前选区内，决定普通滑动是否可以升级为拖选。
+   */
   function selectedIncludesPoint(event: PointerEvent): boolean {
     const selected = getSelected?.();
     const cellRect = cellRectByClientPoint(spreadsheet, event.clientX, event.clientY);
@@ -80,6 +89,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     return selected?.ri === cellRect.ri && selected?.ci === cellRect.ci;
   }
 
+  /**
+   * 识别宿主渲染的选区手柄，并计算拖拽时固定不动的对角锚点。
+   */
   function getHandleDrag(event: PointerEvent): {
     handle: Element;
     role: string;
@@ -99,6 +111,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     };
   }
 
+  /**
+   * 根据 pointer 靠近容器边缘的程度计算自动滚动速度。
+   */
   function edgeDelta(clientX: number, clientY: number): { dx: number; dy: number } {
     const rect = target.getBoundingClientRect();
     let dx = 0;
@@ -119,6 +134,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     };
   }
 
+  /**
+   * 持续执行边缘自动滚动，同时把选区扩展到当前 pointer 所在单元格。
+   */
   function runEdgeScroll(): void {
     if (!state.edgeScrollPoint || !edgeScroll) {
       state.edgeScrollFrame = 0;
@@ -136,6 +154,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     state.edgeScrollFrame = window.requestAnimationFrame(runEdgeScroll);
   }
 
+  /**
+   * 根据最新 pointer 坐标开启、更新或停止边缘自动滚动。
+   */
   function updateEdgeScroll(event: PointerEvent): void {
     if (!edgeScroll) return;
     const delta = edgeDelta(event.clientX, event.clientY);
@@ -153,6 +174,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     }
   }
 
+  /**
+   * 处理选区拖拽移动；只有超过阈值后才阻止默认滚动并触发选区更新。
+   */
   function handleRangeDragMove(event: PointerEvent): boolean {
     const drag = state.rangeDrag;
     if (!drag || drag.pointerId !== event.pointerId || !drag.canStart) return false;
@@ -184,6 +208,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     return true;
   }
 
+  /**
+   * 结束选区拖拽，做最后一次非 moving 状态的选区提交并回调宿主。
+   */
   function finishRangeDrag(event: PointerEvent): boolean {
     const drag = state.rangeDrag;
     state.rangeDrag = null;
@@ -197,6 +224,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     return true;
   }
 
+  /**
+   * 在 pointer 结束时判断是否为稳定点击，并区分单击和双击。
+   */
   function handleTapEnd(event: PointerEvent): void {
     const tapStart = state.tapStart;
     state.tapStart = null;
@@ -235,6 +265,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     onSingleTap?.(event);
   }
 
+  /**
+   * pointer 开始时初始化点击、长按、拖选或双指捏合状态。
+   */
   function onPointerDown(event: PointerEvent): void {
     const handleDrag = getHandleDrag(event);
     if (handleDrag) {
@@ -283,6 +316,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     }
   }
 
+  /**
+   * pointer 移动时优先处理拖选，其次处理长按取消和双指缩放。
+   */
   function onPointerMove(event: PointerEvent): void {
     if (!state.pointers.has(event.pointerId)) return;
     state.pointers.set(event.pointerId, event);
@@ -307,6 +343,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     }, event);
   }
 
+  /**
+   * pointer 结束或取消时收束拖选、点击、长按和捏合状态。
+   */
   function onPointerUp(event: PointerEvent): void {
     const wasRangeDragging = finishRangeDrag(event);
     if (!wasRangeDragging) handleTapEnd(event);
@@ -325,6 +364,9 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
   target.addEventListener('pointercancel', onPointerUp, { passive: true });
 
   return {
+    /**
+     * 卸载所有事件监听和异步任务，页面销毁或重新挂载 adapter 前必须调用。
+     */
     destroy() {
       clearLongPress();
       stopEdgeScroll();

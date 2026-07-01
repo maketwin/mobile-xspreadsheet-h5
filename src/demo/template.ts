@@ -1,3 +1,6 @@
+/**
+ * 渲染移动端 Excel demo 的基础 DOM 结构。
+ */
 export function renderAppShell(app: Element | null): void {
   if (!app) throw new Error('缺少 #app 容器。');
   app.innerHTML = `
@@ -73,6 +76,9 @@ export function renderAppShell(app: Element | null): void {
   `;
 }
 
+/**
+ * 统一收集 demo 运行时需要访问的 DOM 节点。
+ */
 export function createDemoElements() {
   return {
     appShell: document.querySelector('.mobile-excel'),

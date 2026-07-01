@@ -34,10 +34,16 @@ const state = {
   perfMetrics: null,
 };
 
+/**
+ * 暴露给页面按钮和调试台的性能测试入口。
+ */
 async function runSpreadsheetPerf(rowCount = 1000, colCount = 50) {
   return runPerfTest(state, els, showGestureTip, rowCount, colCount);
 }
 
+/**
+ * 创建 x-spreadsheet 实例并绑定基础选区、编辑事件。
+ */
 function initSpreadsheet() {
   state.spreadsheet = new Spreadsheet('#xspreadsheet', {
     mode: 'edit',
@@ -78,6 +84,9 @@ function initSpreadsheet() {
   scheduleViewportUpdate();
 }
 
+/**
+ * 同步单格选中状态到移动端编辑器和快捷菜单。
+ */
 function updateSelection(cell, ri, ci) {
   const text = cell?.text ?? '';
   state.selected = { ri, ci, text, range: null };
@@ -96,6 +105,9 @@ function updateSelection(cell, ri, ci) {
   scheduleSelectionHandleUpdate();
 }
 
+/**
+ * 同步多格选区状态，并更新选区地址展示。
+ */
 function updateRangeSelection(cell, range) {
   const text = cell?.text ?? '';
   state.selected = {
@@ -111,6 +123,9 @@ function updateRangeSelection(cell, range) {
   scheduleSelectionHandleUpdate();
 }
 
+/**
+ * 聚焦移动端输入控件，并把光标移动到文本末尾。
+ */
 function focusEditorControl(control) {
   if (!control) return;
   control.focus({ preventScroll: true });
@@ -120,6 +135,9 @@ function focusEditorControl(control) {
   }
 }
 
+/**
+ * 切换底部编辑器显示状态，并触发表格视口重算。
+ */
 function setEditing(isEditing) {
   state.isEditing = isEditing;
   els.cellEditor.style.display = isEditing ? '' : 'none';
@@ -133,6 +151,9 @@ function setEditing(isEditing) {
   scheduleSelectionHandleUpdate();
 }
 
+/**
+ * 切换文本、数字、日期编辑模式，必要时主动唤起输入控件。
+ */
 function setEditorType(type, focus = true) {
   state.editorType = type;
   document.documentElement.dataset.editorType = type;
@@ -152,15 +173,24 @@ function setEditorType(type, focus = true) {
   }
 }
 
+/**
+ * 保存普通文本输入框中的值。
+ */
 function saveText() {
   const value = els.cellInput.value;
   commitValue(value);
 }
 
+/**
+ * 保存日期输入框中的值。
+ */
 function saveDate() {
   commitValue(els.dateInput.value);
 }
 
+/**
+ * 将编辑值写回 x-spreadsheet，并关闭移动端编辑器。
+ */
 function commitValue(value) {
   const { ri, ci } = state.selected;
   state.spreadsheet.cellText(ri, ci, value).reRender();
@@ -170,17 +200,26 @@ function commitValue(value) {
   scheduleViewportUpdate();
 }
 
+/**
+ * 统一移除文本和日期输入框焦点。
+ */
 function blurEditors() {
   els.cellInput.blur();
   els.dateInput.blur();
 }
 
+/**
+ * 放弃当前编辑内容，恢复选中单元格原值。
+ */
 function cancelEdit() {
   els.cellInput.value = state.selected.text;
   els.dateInput.value = normalizeDate(state.selected.text);
   setEditing(false);
 }
 
+/**
+ * 进入双击编辑模式，并启动键盘视口同步。
+ */
 function enterEditMode() {
   hideLongPressMenu();
   setEditing(true);
@@ -190,6 +229,9 @@ function enterEditMode() {
   scheduleViewportUpdate(180, true);
 }
 
+/**
+ * 复制当前选区文本；剪贴板不可用时降级为选中文本。
+ */
 async function copySelectedCell() {
   const text = state.selected.text ?? '';
   try {
@@ -202,11 +244,17 @@ async function copySelectedCell() {
   }
 }
 
+/**
+ * 清空当前选中单元格内容。
+ */
 function clearSelectedCell() {
   commitValue('');
   showGestureTip('已清空当前单元格');
 }
 
+/**
+ * 设置宿主缩放比例，并同步表格逻辑尺寸和选区手柄位置。
+ */
 function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
   state.scale = Math.min(1.7, Math.max(0.72, nextScale));
   els.scaleLayer.style.transform = `scale(${state.scale})`;
@@ -218,6 +266,9 @@ function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
   if (updateViewport) scheduleViewportUpdate(immediate ? 0 : 90);
 }
 
+/**
+ * 处理 adapter 判定后的单击：关闭菜单并退出编辑态。
+ */
 function handleAdapterSingleTap(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
@@ -226,26 +277,41 @@ function handleAdapterSingleTap(event) {
   }
 }
 
+/**
+ * 处理 adapter 判定后的双击：进入底部编辑器。
+ */
 function handleAdapterDoubleTap() {
   enterEditMode();
 }
 
+/**
+ * 处理 adapter 判定后的长按：在触点附近展示快捷菜单。
+ */
 function handleAdapterLongPress(event) {
   showLongPressMenu(event.clientX, event.clientY);
 }
 
+/**
+ * 处理选区拖拽开始：关闭浮层并进入手柄拖拽样式。
+ */
 function handleAdapterRangeDragStart() {
   hideLongPressMenu();
   setEditing(false);
   els.selectionHandles.classList.add('dragging');
 }
 
+/**
+ * 处理选区拖拽结束：恢复手柄样式并刷新手柄位置。
+ */
 function handleAdapterRangeDragEnd() {
   hideLongPressMenu();
   els.selectionHandles.classList.remove('dragging');
   scheduleSelectionHandleUpdate();
 }
 
+/**
+ * 处理双指捏合开始：记录基础缩放比例。
+ */
 function handleAdapterPinchStart(pinch) {
   state.baseScale = state.scale;
   state.isPinching = true;
@@ -254,6 +320,9 @@ function handleAdapterPinchStart(pinch) {
   pinch.baseScale = state.baseScale;
 }
 
+/**
+ * 处理双指捏合移动：按距离变化实时更新缩放。
+ */
 function handleAdapterPinchMove(pinch) {
   setScale((pinch.baseScale || state.baseScale) * pinch.scaleDelta, {
     immediate: false,
@@ -262,6 +331,9 @@ function handleAdapterPinchMove(pinch) {
   scheduleSelectionHandleUpdate();
 }
 
+/**
+ * 处理双指捏合结束：重算表格视口并收起提示。
+ */
 function handleAdapterPinchEnd() {
   if (state.isPinching) scheduleViewportUpdate();
   state.isPinching = false;
@@ -269,6 +341,9 @@ function handleAdapterPinchEnd() {
   setTimeout(() => els.gestureTip.classList.remove('show'), 700);
 }
 
+/**
+ * 根据当前选区刷新长按菜单标题和内容摘要。
+ */
 function syncLongPressMenuContent() {
   if (!els.menuCellAddress || !els.menuCellText) return;
   els.menuCellAddress.textContent = state.selected.range
@@ -277,6 +352,9 @@ function syncLongPressMenuContent() {
   els.menuCellText.textContent = state.selected.text || '空单元格';
 }
 
+/**
+ * 在移动端视口内计算长按菜单位置，避免被编辑器遮挡。
+ */
 function showLongPressMenu(clientX, clientY) {
   if (state.isPinching) return;
   syncLongPressMenuContent();
@@ -300,16 +378,25 @@ function showLongPressMenu(clientX, clientY) {
   showGestureTip('长按菜单已打开');
 }
 
+/**
+ * 隐藏长按快捷菜单。
+ */
 function hideLongPressMenu() {
   els.longPressMenu.classList.remove('show');
   els.longPressMenu.classList.add('hidden');
 }
 
+/**
+ * 设置单个选区手柄的屏幕位置。
+ */
 function setHandlePosition(handle, x, y) {
   handle.style.left = `${Math.round(x)}px`;
   handle.style.top = `${Math.round(y)}px`;
 }
 
+/**
+ * 根据 x-spreadsheet 当前选区 DOM 矩形刷新移动端触摸手柄。
+ */
 function updateSelectionHandles() {
   if (!els.selectionHandles || state.isEditing || state.isPinching) {
     els.selectionHandles?.classList.add('hidden');
@@ -340,6 +427,9 @@ function updateSelectionHandles() {
   setHandlePosition(els.selectionEndHandle, right, bottom);
 }
 
+/**
+ * 使用 requestAnimationFrame 合并多次手柄刷新请求。
+ */
 function scheduleSelectionHandleUpdate(delay = 0) {
   if (!els.selectionHandles) return;
   cancelAnimationFrame(state.handleRaf);
@@ -350,6 +440,9 @@ function scheduleSelectionHandleUpdate(delay = 0) {
   state.handleRaf = requestAnimationFrame(updateSelectionHandles);
 }
 
+/**
+ * 挂载移动端适配包，并把手势回调桥接到 demo UI。
+ */
 function mountAdapter() {
   state.mobileAdapter?.destroy?.();
   state.mobileAdapter = mountMobileSpreadsheetAdapter({
@@ -368,6 +461,9 @@ function mountAdapter() {
   });
 }
 
+/**
+ * 展示短暂手势提示文案。
+ */
 function showGestureTip(message) {
   els.gestureTip.textContent = message;
   els.gestureTip.classList.add('show');
@@ -377,6 +473,9 @@ function showGestureTip(message) {
   }, 1200);
 }
 
+/**
+ * 根据 visualViewport 同步软键盘遮挡高度，解决 iOS/Android 键盘弹起后的空白和错位。
+ */
 function syncKeyboardOffset() {
   const vv = window.visualViewport;
   const mobileViewport = window.matchMedia('(max-width: 739px)').matches;
@@ -393,6 +492,9 @@ function syncKeyboardOffset() {
   scheduleViewportUpdate();
 }
 
+/**
+ * 分阶段同步键盘尺寸，兼容 WebView 多次上报 visualViewport 的情况。
+ */
 function scheduleKeyboardSync() {
   state.keyboardSyncTimers.forEach(timer => window.clearTimeout(timer));
   state.keyboardSyncTimers = [0, 80, 180, 320].map(delay => window.setTimeout(() => {
@@ -401,6 +503,9 @@ function scheduleKeyboardSync() {
   }, delay));
 }
 
+/**
+ * 获取当前可见应用高度，移动端优先使用 visualViewport。
+ */
 function getVisibleAppHeight() {
   const vv = window.visualViewport;
   if (vv && window.matchMedia('(max-width: 739px)').matches) {
@@ -409,6 +514,9 @@ function getVisibleAppHeight() {
   return els.appShell.clientHeight || window.innerHeight;
 }
 
+/**
+ * 计算 x-spreadsheet 内部逻辑视口尺寸，缩放时使用反向尺寸保证坐标对齐。
+ */
 function getSheetViewportSize() {
   const topbarHeight = els.topbar.getBoundingClientRect().height || 64;
   const editorHeight = state.isEditing
@@ -425,6 +533,9 @@ function getSheetViewportSize() {
   };
 }
 
+/**
+ * 同步底部编辑器高度到 CSS 变量和表格滚动容器。
+ */
 function updateEditorMetrics() {
   if (!state.isEditing) {
     state.editorHeight = 0;
@@ -438,11 +549,17 @@ function updateEditorMetrics() {
   els.gestureLayer.style.paddingBottom = `${state.editorHeight + 10}px`;
 }
 
+/**
+ * 判断本次计算出的表格视口尺寸是否发生变化。
+ */
 function viewportSizeChanged(size) {
   const last = state.lastViewportSize;
   return !last || last.width !== size.width || last.height !== size.height;
 }
 
+/**
+ * 合并表格 resize 请求，保留滚动位置并刷新选区手柄。
+ */
 function scheduleViewportUpdate(delay = 0, force = false) {
   if (delay > 0) {
     window.clearTimeout(state.viewportTimer);
@@ -475,6 +592,9 @@ function scheduleViewportUpdate(delay = 0, force = false) {
   });
 }
 
+/**
+ * 绑定 demo 页面所有按钮、输入框、键盘和视口事件。
+ */
 function bindEvents() {
   ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend', 'click'].forEach((eventName) => {
     els.cellEditor.addEventListener(eventName, (event) => {

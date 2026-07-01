@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { buildLargeSheetData } from './sheet-data.ts';
 
+/**
+ * 重置表格渲染耗时统计。
+ */
 export function resetPerfMetrics(state) {
   state.perfMetrics = {
     renderCount: 0,
@@ -9,6 +12,9 @@ export function resetPerfMetrics(state) {
   };
 }
 
+/**
+ * 包装 x-spreadsheet table.render，统计每次重绘耗时。
+ */
 export function installPerfHooks(state) {
   const table = state.spreadsheet?.sheet?.table;
   if (!table || table.render.__perfWrapped) return;
@@ -27,14 +33,23 @@ export function installPerfHooks(state) {
   table.render.__perfWrapped = true;
 }
 
+/**
+ * 等待两个 requestAnimationFrame，确保浏览器完成一轮布局和绘制。
+ */
 function nextFrame() {
   return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
+/**
+ * 将毫秒数格式化为固定一位小数的展示文本。
+ */
 function formatMs(value) {
   return `${value.toFixed(1)}ms`;
 }
 
+/**
+ * 更新页面上的性能测试结果面板。
+ */
 function updatePerfPanel(els, result, running = false) {
   if (!els.perfPanel) return;
   els.perfPanel.classList.remove('hidden');
@@ -51,6 +66,9 @@ function updatePerfPanel(els, result, running = false) {
   `;
 }
 
+/**
+ * 执行完整性能测试：生成数据、加载数据、模拟滚动并汇总渲染指标。
+ */
 export async function runSpreadsheetPerf(state, els, showGestureTip, rowCount = 1000, colCount = 50) {
   installPerfHooks(state);
   const result = { rows: rowCount, cols: colCount };
