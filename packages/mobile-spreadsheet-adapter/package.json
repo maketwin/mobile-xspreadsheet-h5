@@ -12,6 +12,10 @@
   },
   "files": [
     "src/index.ts",
+    "src/types.ts",
+    "src/runtime.ts",
+    "src/selection.ts",
+    "src/gesture.ts",
     "README.md"
   ]
 }

@@ -173,6 +173,7 @@
 
 - 新增包目录：`packages/mobile-spreadsheet-adapter`。
 - 包名：`@mobile-excel/x-spreadsheet-adapter`。
+- 适配包拆分为类型定义、运行时兼容、选区桥接、手势运行时和统一入口，demo 侧拆分为模板、示例数据、格式化工具和性能测试模块。
 - 提供非侵入式 helper：
   - `cellRectByClientPoint`
   - `getSelectedRange`

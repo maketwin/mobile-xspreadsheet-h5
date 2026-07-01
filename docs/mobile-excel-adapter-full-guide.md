@@ -90,8 +90,17 @@ mobile-xspreadsheet-h5
 │       ├── package.json
 │       └── src
 │           ├── index.ts
+│           ├── types.ts
+│           ├── runtime.ts
+│           ├── selection.ts
+│           ├── gesture.ts
 │           └── index.test.ts
 ├── src
+│   ├── demo
+│   │   ├── template.ts
+│   │   ├── sheet-data.ts
+│   │   ├── cell-format.ts
+│   │   └── perf.ts
 │   ├── main.ts
 │   ├── styles.css
 │   └── vendor
@@ -152,6 +161,10 @@ import {
 - `README.md`
 - `package.json`
 - `src/index.ts`
+- `src/types.ts`
+- `src/runtime.ts`
+- `src/selection.ts`
+- `src/gesture.ts`
 
 测试文件 `src/index.test.ts` 不进入发布包。
 
@@ -480,6 +493,10 @@ npm pack --dry-run
 - `README.md`
 - `package.json`
 - `src/index.ts`
+- `src/types.ts`
+- `src/runtime.ts`
+- `src/selection.ts`
+- `src/gesture.ts`
 
 测试文件不会进入发布包。
 
