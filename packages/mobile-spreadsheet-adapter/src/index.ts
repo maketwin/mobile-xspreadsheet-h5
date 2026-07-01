@@ -1,22 +1,247 @@
-function getSheet(spreadsheet) {
-  return spreadsheet?.sheet || spreadsheet;
+export interface CellPoint {
+  /** 从 0 开始的行索引。 */
+  ri: number;
+  /** 从 0 开始的列索引。 */
+  ci: number;
 }
 
-function getOverlayElement(sheet) {
-  return sheet?.overlayerEl?.el || sheet?.overlayerEl;
+export interface CellRect extends CellPoint {
+  /** 在表格覆盖层坐标系中的 left 偏移。 */
+  left: number;
+  /** 在表格覆盖层坐标系中的 top 偏移。 */
+  top: number;
+  /** 单元格宽度，单位为表格覆盖层像素。 */
+  width: number;
+  /** 单元格高度，单位为表格覆盖层像素。 */
+  height: number;
+}
+
+export interface CellRange {
+  /** 起始行索引。 */
+  sri: number;
+  /** 起始列索引。 */
+  sci: number;
+  /** 结束行索引。 */
+  eri: number;
+  /** 结束列索引。 */
+  eci: number;
+  /** x-spreadsheet 提供的选区判断方法，可用时存在。 */
+  includes?: (ri: number, ci: number) => boolean;
+  /** 判断选区是否包含多个单元格，可用时存在。 */
+  multiple?: () => boolean;
+  /** 选区大小，格式为 [行数, 列数]，可用时存在。 */
+  size?: () => [number, number];
+  /** 表格地址字符串表示，可用时存在。 */
+  toString?: () => string;
+}
+
+export interface RangeSelectionResult extends CellPoint {
+  /** 拖拽或手柄移动后的选区结果。 */
+  range: CellRange | null;
+}
+
+export interface PinchState {
+  /** 捏合开始时两个 pointer 之间的距离。 */
+  startDistance: number;
+  /** 当前两个 pointer 之间的距离。 */
+  currentDistance?: number;
+  /** currentDistance / startDistance。 */
+  scaleDelta?: number;
+  /** 宿主可选写入的基础缩放值。 */
+  baseScale?: number;
+}
+
+export interface HostSelection extends Partial<CellPoint> {
+  /** 宿主应用维护的当前单元格文本。 */
+  text?: string;
+  /** 宿主应用维护的当前选区。 */
+  range?: CellRange | null;
+}
+
+export interface SelectRangeEndOptions {
+  /** pointer 释放后的最后一次选区更新可传 false。 */
+  moving?: boolean;
+  /** 拖拽选区手柄时使用的固定选区锚点。 */
+  anchor?: CellPoint | null;
+}
+
+export interface MobileSpreadsheetAdapterOptions {
+  /** x-spreadsheet 实例。 */
+  spreadsheet: unknown;
+  /** 接收 pointer 事件的元素，通常是表格上方的手势层。 */
+  target: HTMLElement;
+  /** 返回宿主应用最新的选区状态。 */
+  getSelected?: () => HostSelection | null | undefined;
+  /** 确认单击后调用。 */
+  onSingleTap?: (event: PointerEvent) => void;
+  /** 确认双击后调用。 */
+  onDoubleTap?: (event: PointerEvent) => void;
+  /** 稳定按压超过 longPressMs 后调用。 */
+  onLongPress?: (event: PointerEvent) => void;
+  /** 选区拖拽超过 dragStartTolerance 后调用一次。 */
+  onRangeDragStart?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
+  /** 活跃拖拽改变选区时调用。 */
+  onRangeDragMove?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
+  /** 活跃选区拖拽结束时调用。 */
+  onRangeDragEnd?: (result: RangeSelectionResult | null, event: PointerEvent) => void;
+  /** 两个活跃 pointer 开始捏合时调用。 */
+  onPinchStart?: (pinch: PinchState, event: PointerEvent) => void;
+  /** 捏合距离变化时调用。 */
+  onPinchMove?: (pinch: PinchState, event: PointerEvent) => void;
+  /** 捏合结束时调用。 */
+  onPinchEnd?: (pinch: PinchState, event: PointerEvent) => void;
+  /** 从 pointer 事件中检测宿主渲染的选区手柄。 */
+  isSelectionHandle?: (event: PointerEvent) => Element | null | undefined;
+  /** 长按阈值，单位毫秒。默认 550。 */
+  longPressMs?: number;
+  /** 稳定点击允许的移动距离。默认 10 CSS 像素。 */
+  tapMoveTolerance?: number;
+  /** 进入选区拖拽前需要达到的移动距离。默认 14 CSS 像素。 */
+  dragStartTolerance?: number;
+  /** 双击时间窗口，单位毫秒。默认 320。 */
+  doubleTapMs?: number;
+  /** 双击距离容差。默认 24 CSS 像素。 */
+  doubleTapTolerance?: number;
+  /** 选区拖拽靠近视口边缘时是否自动滚动。默认 true。 */
+  edgeScroll?: boolean;
+  /** 自动滚动边缘区域大小。默认 42 CSS 像素。 */
+  edgeSize?: number;
+  /** 每个动画帧的最大自动滚动增量。默认 18。 */
+  edgeMaxSpeed?: number;
+}
+
+export interface MobileSpreadsheetAdapter {
+  /** 移除适配器持有的监听器、定时器和动画帧。 */
+  destroy: () => void;
+}
+
+interface SpreadsheetLike {
+  sheet?: SheetLike;
+  resize?: () => unknown;
+  reload?: () => unknown;
+  reRender?: () => unknown;
+}
+
+interface SheetLike {
+  overlayerEl?: ElementWrapper<HTMLElement>;
+  data?: {
+    selector?: SelectorDataLike;
+    getCellRectByXY?: (x: number, y: number) => CellRect;
+    getCell?: (ri: number, ci: number) => unknown;
+  };
+  selector?: SelectorComponentLike;
+  trigger?: (eventName: string, cell: unknown, range: CellRange | null) => void;
+  toolbar?: {
+    reset?: () => void;
+  };
+  table?: {
+    render?: () => void;
+  };
+  horizontalScrollbar?: ScrollbarLike;
+  verticalScrollbar?: ScrollbarLike;
+}
+
+interface SelectorDataLike extends CellPoint {
+  range?: CellRange;
+  setIndexes?: (ri: number, ci: number) => void;
+}
+
+interface SelectorComponentLike {
+  range?: CellRange;
+  indexes?: [number, number];
+  moveIndexes?: [number, number];
+  setEnd?: (ri: number, ci: number, moving?: boolean) => void;
+  br?: {
+    areaEl?: ElementWrapper<HTMLElement>;
+  };
+}
+
+interface ScrollbarLike {
+  scroll?: () => Record<string, number>;
+  move?: (value: Record<string, number>) => void;
+}
+
+interface ElementWrapper<T extends HTMLElement> {
+  el?: T;
+}
+
+interface RangeEndpoints {
+  start: CellPoint;
+  end: CellPoint;
+}
+
+interface TapStart {
+  pointerId: number;
+  x: number;
+  y: number;
+  time: number;
+  moved: boolean;
+}
+
+interface LastTap {
+  time: number;
+  x: number;
+  y: number;
+  ri?: number;
+  ci?: number;
+}
+
+interface RangeDragState {
+  pointerId: number;
+  x: number;
+  y: number;
+  active: boolean;
+  canStart: boolean;
+  started: boolean;
+  anchor: CellPoint | null;
+  handleRole: string | null;
+}
+
+interface EdgeScrollPoint {
+  clientX: number;
+  clientY: number;
+  anchor: CellPoint | null;
+}
+
+interface AdapterState {
+  pointers: Map<number, PointerEvent>;
+  tapStart: TapStart | null;
+  lastTap: LastTap | null;
+  longPressTimer: ReturnType<typeof window.setTimeout> | 0;
+  longPressPointerId: number | null;
+  longPressStart: { x: number; y: number } | null;
+  longPressTriggered: boolean;
+  rangeDrag: RangeDragState | null;
+  pinch: PinchState | null;
+  edgeScrollFrame: number;
+  edgeScrollPoint: EdgeScrollPoint | null;
+}
+
+function asSpreadsheet(spreadsheet: unknown): SpreadsheetLike {
+  return (spreadsheet || {}) as SpreadsheetLike;
+}
+
+function getSheet(spreadsheet: unknown): SheetLike | null {
+  const spreadsheetLike = asSpreadsheet(spreadsheet);
+  return spreadsheetLike.sheet || (spreadsheet as SheetLike) || null;
+}
+
+function getElement<T extends HTMLElement>(value?: ElementWrapper<T> | T): T | undefined {
+  return value && 'el' in value ? value.el : value;
+}
+
+function getOverlayElement(sheet: SheetLike | null): HTMLElement | undefined {
+  return getElement(sheet?.overlayerEl);
 }
 
 /**
  * 将浏览器视口坐标转换为 x-spreadsheet 数据模型返回的单元格矩形。
- *
- * 适配包会读取实际渲染后的覆盖层尺寸，而不是假设缩放为 1，因此宿主应用可以用 CSS transform 包裹表格实现捏合缩放。
- *
- * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
- * @param {number} clientX 浏览器视口 x 坐标。
- * @param {number} clientY 浏览器视口 y 坐标。
- * @returns {{ri: number, ci: number, left: number, top: number, width: number, height: number} | null}
  */
-export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
+export function cellRectByClientPoint(
+  spreadsheet: unknown,
+  clientX: number,
+  clientY: number,
+): CellRect | null {
   const sheet = getSheet(spreadsheet);
   const overlayEl = getOverlayElement(sheet);
   if (!sheet?.data?.getCellRectByXY || !overlayEl) return null;
@@ -31,13 +256,8 @@ export function cellRectByClientPoint(spreadsheet, clientX, clientY) {
 
 /**
  * 判断行列索引是否位于当前选区内。
- *
- * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
- * @param {number} ri 行索引。
- * @param {number} ci 列索引。
- * @returns {boolean}
  */
-export function selectedRangeIncludes(spreadsheet, ri, ci) {
+export function selectedRangeIncludes(spreadsheet: unknown, ri: number, ci: number): boolean {
   const sheet = getSheet(spreadsheet);
   const range = sheet?.data?.selector?.range || sheet?.selector?.range;
   return range?.includes?.(ri, ci) === true;
@@ -45,16 +265,13 @@ export function selectedRangeIncludes(spreadsheet, ri, ci) {
 
 /**
  * 读取 spreadsheet 运行时的当前选区。
- *
- * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
- * @returns {{sri: number, sci: number, eri: number, eci: number, includes?: Function} | null}
  */
-export function getSelectedRange(spreadsheet) {
+export function getSelectedRange(spreadsheet: unknown): CellRange | null {
   const sheet = getSheet(spreadsheet);
   return sheet?.selector?.range || sheet?.data?.selector?.range || null;
 }
 
-function getRangeStartEnd(range) {
+function getRangeStartEnd(range: CellRange | null): RangeEndpoints | null {
   if (!range) return null;
   return {
     start: { ri: range.sri, ci: range.sci },
@@ -62,7 +279,7 @@ function getRangeStartEnd(range) {
   };
 }
 
-function setSelectionAnchor(sheet, anchor) {
+function setSelectionAnchor(sheet: SheetLike | null, anchor: CellPoint | null | undefined): void {
   if (!sheet || !anchor) return;
   // x-spreadsheet 会基于 selector indexes 扩展选区。这里同步更新运行时 selector 对象，让手柄调整能力无需 patch 表格基座。
   sheet.data?.selector?.setIndexes?.(anchor.ri, anchor.ci);
@@ -74,31 +291,23 @@ function setSelectionAnchor(sheet, anchor) {
 
 /**
  * 返回当前选区渲染后的 DOM 矩形，坐标为浏览器视口坐标。
- *
- * 这个函数刻意只做 DOM 辅助，不接管渲染。宿主应用可以用它定位自定义移动端选区手柄。
- *
- * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
- * @returns {DOMRect | null}
  */
-export function selectedRangeClientRect(spreadsheet) {
+export function selectedRangeClientRect(spreadsheet: unknown): DOMRect | null {
   const sheet = getSheet(spreadsheet);
-  const areaEl = sheet?.selector?.br?.areaEl?.el || sheet?.selector?.br?.areaEl;
+  const areaEl = getElement(sheet?.selector?.br?.areaEl);
   if (!areaEl || areaEl.offsetParent === null) return null;
   return areaEl.getBoundingClientRect();
 }
 
 /**
  * 将当前选区扩展到浏览器视口坐标下的单元格。
- *
- * 传入 `options.anchor` 会在扩展选区前临时改变选区锚点。移动端拖拽起点手柄时可固定选区终点，拖拽终点手柄时可固定选区起点。
- *
- * @param {object} spreadsheet x-spreadsheet 实例，或其内部 `sheet`。
- * @param {number} clientX 浏览器视口 x 坐标。
- * @param {number} clientY 浏览器视口 y 坐标。
- * @param {{moving?: boolean, anchor?: {ri: number, ci: number}}} [options]
- * @returns {{ri: number, ci: number, range: object} | null}
  */
-export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, options = {}) {
+export function selectRangeEndByClientPoint(
+  spreadsheet: unknown,
+  clientX: number,
+  clientY: number,
+  options: SelectRangeEndOptions = {},
+): RangeSelectionResult | null {
   const sheet = getSheet(spreadsheet);
   const cellRect = cellRectByClientPoint(spreadsheet, clientX, clientY);
   if (!sheet || !cellRect || cellRect.ri < 0 || cellRect.ci < 0) return null;
@@ -107,7 +316,7 @@ export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, optio
   if (options.anchor) setSelectionAnchor(sheet, options.anchor);
   sheet.selector?.setEnd?.(cellRect.ri, cellRect.ci, moving);
 
-  const range = sheet.selector?.range || sheet.data?.selector?.range;
+  const range = sheet.selector?.range || sheet.data?.selector?.range || null;
   const cell = sheet.data?.getCell?.(cellRect.ri, cellRect.ci);
   sheet.trigger?.('cells-selected', cell, range);
   sheet.toolbar?.reset?.();
@@ -122,18 +331,19 @@ export function selectRangeEndByClientPoint(spreadsheet, clientX, clientY, optio
 
 /**
  * 根据宿主 spreadsheet 暴露的生命周期方法执行 resize 或重新渲染。
- *
- * @param {object} spreadsheet x-spreadsheet 实例。
- * @returns {object} spreadsheet 实例或其 resize 方法返回值。
  */
-export function resizeSpreadsheet(spreadsheet) {
-  if (typeof spreadsheet?.resize === 'function') return spreadsheet.resize();
-  if (typeof spreadsheet?.reload === 'function') return spreadsheet.reload();
-  if (typeof spreadsheet?.reRender === 'function') return spreadsheet.reRender();
+export function resizeSpreadsheet<T>(spreadsheet: T): T | unknown {
+  const spreadsheetLike = asSpreadsheet(spreadsheet);
+  if (typeof spreadsheetLike.resize === 'function') return spreadsheetLike.resize();
+  if (typeof spreadsheetLike.reload === 'function') return spreadsheetLike.reload();
+  if (typeof spreadsheetLike.reRender === 'function') return spreadsheetLike.reRender();
   return spreadsheet;
 }
 
-function getScrollbars(spreadsheet) {
+function getScrollbars(spreadsheet: unknown): {
+  horizontal?: ScrollbarLike;
+  vertical?: ScrollbarLike;
+} {
   const sheet = getSheet(spreadsheet);
   return {
     horizontal: sheet?.horizontalScrollbar,
@@ -141,47 +351,21 @@ function getScrollbars(spreadsheet) {
   };
 }
 
-function moveScrollbar(scrollbar, key, delta) {
+function moveScrollbar(scrollbar: ScrollbarLike | undefined, key: string, delta: number): void {
   if (!scrollbar || !delta) return;
   const current = scrollbar.scroll?.() || {};
   const currentValue = Number(current[key] || 0);
   scrollbar.move?.({ [key]: Math.max(0, currentValue + delta) });
 }
 
-function defaultNow() {
+function defaultNow(): number {
   return performance.now();
 }
 
 /**
  * 在宿主元素上挂载移动端手势适配器。
- *
- * 适配包只维护 pointer 状态。底部编辑器、菜单、缩放 transform 和选区手柄等视觉 UI 由宿主应用控制。所有手势都通过回调暴露，因此适配包不绑定固定产品设计。
- *
- * @param {object} options 适配器参数。
- * @param {object} options.spreadsheet x-spreadsheet 实例。
- * @param {HTMLElement} options.target 接收 pointer 事件的元素。
- * @param {Function} [options.getSelected] 返回宿主选区状态。
- * @param {Function} [options.onSingleTap] 确认单击后调用。
- * @param {Function} [options.onDoubleTap] 确认双击后调用。
- * @param {Function} [options.onLongPress] 长按达到阈值后调用。
- * @param {Function} [options.onRangeDragStart] 选区拖拽激活时调用。
- * @param {Function} [options.onRangeDragMove] 活跃选区拖拽移动时调用。
- * @param {Function} [options.onRangeDragEnd] 选区拖拽结束时调用。
- * @param {Function} [options.onPinchStart] 两个活跃 pointer 开始捏合时调用。
- * @param {Function} [options.onPinchMove] 捏合过程中带缩放增量调用。
- * @param {Function} [options.onPinchEnd] 捏合结束时调用。
- * @param {Function} [options.isSelectionHandle] 检测可拖拽选区手柄。
- * @param {number} [options.longPressMs=550] 长按阈值。
- * @param {number} [options.tapMoveTolerance=10] 点击允许的移动距离。
- * @param {number} [options.dragStartTolerance=14] 进入选区拖拽前需要达到的移动距离。
- * @param {number} [options.doubleTapMs=320] 双击时间窗口。
- * @param {number} [options.doubleTapTolerance=24] 双击距离窗口。
- * @param {boolean} [options.edgeScroll=true] 选区拖拽靠近边缘时是否自动滚动。
- * @param {number} [options.edgeSize=42] 边缘触发区域大小，单位为 CSS 像素。
- * @param {number} [options.edgeMaxSpeed=18] 每帧最大自动滚动速度。
- * @returns {{destroy: Function}} 适配器控制器。
  */
-export function mountMobileSpreadsheetAdapter(options) {
+export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterOptions): MobileSpreadsheetAdapter {
   const {
     spreadsheet,
     target,
@@ -195,7 +379,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     onPinchStart,
     onPinchMove,
     onPinchEnd,
-    isSelectionHandle = event => event.target?.closest?.('[data-mobile-selection-handle]'),
+    isSelectionHandle = event => (event.target as Element | null)?.closest?.('[data-mobile-selection-handle]'),
     longPressMs = 550,
     tapMoveTolerance = 10,
     dragStartTolerance = 14,
@@ -210,7 +394,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     throw new Error('mountMobileSpreadsheetAdapter 需要传入 target 元素。');
   }
 
-  const state = {
+  const state: AdapterState = {
     // 手势仲裁封装在适配包内部，宿主只接收已经判定好的单击、拖选、长按、捏合等回调。
     pointers: new Map(),
     tapStart: null,
@@ -225,20 +409,20 @@ export function mountMobileSpreadsheetAdapter(options) {
     edgeScrollPoint: null,
   };
 
-  function clearLongPress() {
+  function clearLongPress(): void {
     window.clearTimeout(state.longPressTimer);
     state.longPressTimer = 0;
     state.longPressPointerId = null;
     state.longPressStart = null;
   }
 
-  function stopEdgeScroll() {
+  function stopEdgeScroll(): void {
     if (state.edgeScrollFrame) window.cancelAnimationFrame(state.edgeScrollFrame);
     state.edgeScrollFrame = 0;
     state.edgeScrollPoint = null;
   }
 
-  function selectedIncludesPoint(event) {
+  function selectedIncludesPoint(event: PointerEvent): boolean {
     const selected = getSelected?.();
     const cellRect = cellRectByClientPoint(spreadsheet, event.clientX, event.clientY);
     if (!cellRect || cellRect.ri < 0 || cellRect.ci < 0) return false;
@@ -246,13 +430,17 @@ export function mountMobileSpreadsheetAdapter(options) {
     return selected?.ri === cellRect.ri && selected?.ci === cellRect.ci;
   }
 
-  function getHandleDrag(event) {
+  function getHandleDrag(event: PointerEvent): {
+    handle: Element;
+    role: string;
+    anchor: CellPoint;
+  } | null {
     const handle = isSelectionHandle?.(event);
     if (!handle) return null;
     const range = getSelectedRange(spreadsheet);
     const endpoints = getRangeStartEnd(range);
     if (!endpoints) return null;
-    const role = handle.dataset?.mobileSelectionHandle || handle.getAttribute?.('data-mobile-selection-handle') || 'end';
+    const role = handle.getAttribute('data-mobile-selection-handle') || 'end';
     // 拖拽某个手柄时，将对角固定为选区锚点。
     return {
       handle,
@@ -261,7 +449,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     };
   }
 
-  function edgeDelta(clientX, clientY) {
+  function edgeDelta(clientX: number, clientY: number): { dx: number; dy: number } {
     const rect = target.getBoundingClientRect();
     let dx = 0;
     let dy = 0;
@@ -281,7 +469,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     };
   }
 
-  function runEdgeScroll() {
+  function runEdgeScroll(): void {
     if (!state.edgeScrollPoint || !edgeScroll) {
       state.edgeScrollFrame = 0;
       return;
@@ -298,7 +486,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     state.edgeScrollFrame = window.requestAnimationFrame(runEdgeScroll);
   }
 
-  function updateEdgeScroll(event) {
+  function updateEdgeScroll(event: PointerEvent): void {
     if (!edgeScroll) return;
     const delta = edgeDelta(event.clientX, event.clientY);
     if (!delta.dx && !delta.dy) {
@@ -315,7 +503,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     }
   }
 
-  function handleRangeDragMove(event) {
+  function handleRangeDragMove(event: PointerEvent): boolean {
     const drag = state.rangeDrag;
     if (!drag || drag.pointerId !== event.pointerId || !drag.canStart) return false;
     if (state.pointers.size > 1 || state.pinch) {
@@ -346,7 +534,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     return true;
   }
 
-  function finishRangeDrag(event) {
+  function finishRangeDrag(event: PointerEvent): boolean {
     const drag = state.rangeDrag;
     state.rangeDrag = null;
     stopEdgeScroll();
@@ -359,7 +547,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     return true;
   }
 
-  function handleTapEnd(event) {
+  function handleTapEnd(event: PointerEvent): void {
     const tapStart = state.tapStart;
     state.tapStart = null;
     if (!tapStart || tapStart.pointerId !== event.pointerId) return;
@@ -397,7 +585,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     onSingleTap?.(event);
   }
 
-  function onPointerDown(event) {
+  function onPointerDown(event: PointerEvent): void {
     const handleDrag = getHandleDrag(event);
     if (handleDrag) {
       event.preventDefault();
@@ -445,7 +633,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     }
   }
 
-  function onPointerMove(event) {
+  function onPointerMove(event: PointerEvent): void {
     if (!state.pointers.has(event.pointerId)) return;
     state.pointers.set(event.pointerId, event);
     if (handleRangeDragMove(event)) return;
@@ -469,7 +657,7 @@ export function mountMobileSpreadsheetAdapter(options) {
     }, event);
   }
 
-  function onPointerUp(event) {
+  function onPointerUp(event: PointerEvent): void {
     const wasRangeDragging = finishRangeDrag(event);
     if (!wasRangeDragging) handleTapEnd(event);
     state.pointers.delete(event.pointerId);

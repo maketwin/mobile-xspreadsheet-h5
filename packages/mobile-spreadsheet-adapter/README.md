@@ -25,7 +25,7 @@
 ```js
 import {
   mountMobileSpreadsheetAdapter,
-} from '../packages/mobile-spreadsheet-adapter/src/index.js';
+} from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 
 const adapter = mountMobileSpreadsheetAdapter({
   spreadsheet,

@@ -12,7 +12,7 @@
 - 基于 `visualViewport` 的键盘遮挡适配
 - 移动端长按单元格菜单
 - 移动端拖拽框选和选区手柄调整
-- 非侵入式移动适配包和类型声明
+- 非侵入式移动适配包和类型定义
 
 ## Excel 基座边界
 
@@ -42,7 +42,7 @@ packages/mobile-spreadsheet-adapter
 
 它提供非侵入式入口 `mountMobileSpreadsheetAdapter`，以及一组移动端适配 helper，包括：客户端坐标转单元格、拖拽框选、选区手柄调整、边缘自动滚动、双指捏合回调、表格 resize 桥接。
 
-适配包已补齐 JSDoc 注释和 `src/index.d.ts` 类型声明，业务项目接入时可以获得编辑器提示。
+适配包已补齐 JSDoc 注释和 `src/index.ts` 类型定义，业务项目接入时可以获得编辑器提示。
 
 ## 完整文档
 

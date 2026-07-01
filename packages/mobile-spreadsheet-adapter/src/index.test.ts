@@ -14,7 +14,7 @@ import {
   selectedRangeClientRect,
   selectedRangeIncludes,
   selectRangeEndByClientPoint,
-} from './index.js';
+} from './index.ts';
 
 function makeRange(sri, sci, eri, eci) {
   return {

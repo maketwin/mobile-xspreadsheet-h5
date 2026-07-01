@@ -188,7 +188,7 @@
   - 选区起点/终点手柄拖拽
   - 双指捏合回调
   - 边缘自动滚动
-- 补齐 `src/index.d.ts` 类型声明。
+- 补齐 `src/index.ts` 类型定义。
 - 补齐公共 API JSDoc 和关键移动端适配逻辑注释。
 - demo 的移动端拖动框选、选区手柄拖拽改为通过适配包调用，不再要求 `src/vendor/x-spreadsheet` 新增方法。
 - 当前功能分支相对 `origin/main` 不再包含 `src/vendor/x-spreadsheet` 差异。
@@ -216,7 +216,7 @@
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量性能测试入口。
 - GitHub Pages 自动部署。
-- 移动端适配包可接入形态，包括 README、JSDoc、类型声明和宿主边界说明。
+- 移动端适配包可接入形态，包括 README、JSDoc、类型定义和宿主边界说明。
 
 ## 验证记录
 

@@ -3,7 +3,7 @@ import {
   mountMobileSpreadsheetAdapter,
   resizeSpreadsheet,
   selectedRangeClientRect,
-} from '../packages/mobile-spreadsheet-adapter/src/index.js';
+} from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 import './styles.css';
 
 const app = document.querySelector('#app');

@@ -38,7 +38,7 @@
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量渲染性能测试入口。
 - GitHub Pages 预览。
-- 适配包 README、JSDoc 和 TypeScript 类型声明。
+- 适配包 README、JSDoc 和 TypeScript 类型定义。
 - 适配包单元测试。
 
 ## 4. 架构原则
@@ -89,11 +89,10 @@ mobile-xspreadsheet-h5
 │       ├── README.md
 │       ├── package.json
 │       └── src
-│           ├── index.js
-│           ├── index.d.ts
-│           └── index.test.js
+│           ├── index.ts
+│           └── index.test.ts
 ├── src
-│   ├── main.js
+│   ├── main.ts
 │   ├── styles.css
 │   └── vendor
 │       └── x-spreadsheet
@@ -145,17 +144,16 @@ import {
   mountMobileSpreadsheetAdapter,
   resizeSpreadsheet,
   selectedRangeClientRect,
-} from '../packages/mobile-spreadsheet-adapter/src/index.js';
+} from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 ```
 
 发布清单：
 
 - `README.md`
 - `package.json`
-- `src/index.js`
-- `src/index.d.ts`
+- `src/index.ts`
 
-测试文件 `src/index.test.js` 不进入发布包。
+测试文件 `src/index.test.ts` 不进入发布包。
 
 ## 8. 适配包 API
 
@@ -334,7 +332,7 @@ demo 中的手柄逻辑：
 主要接入文件：
 
 ```text
-src/main.js
+src/main.ts
 src/styles.css
 ```
 
@@ -429,7 +427,7 @@ vitest
 测试文件：
 
 ```text
-packages/mobile-spreadsheet-adapter/src/index.test.js
+packages/mobile-spreadsheet-adapter/src/index.test.ts
 ```
 
 运行命令：
@@ -481,8 +479,7 @@ npm pack --dry-run
 
 - `README.md`
 - `package.json`
-- `src/index.js`
-- `src/index.d.ts`
+- `src/index.ts`
 
 测试文件不会进入发布包。
 
@@ -604,7 +601,7 @@ git diff --name-only origin/main..HEAD -- src/vendor/x-spreadsheet
 - 保持 Excel 基座稳定。
 - 移动端适配能力通过包沉淀。
 - demo 证明适配包可接入真实 x-spreadsheet 运行时。
-- 公共 API 有中文注释和类型声明。
+- 公共 API 有中文注释和类型定义。
 - 核心手势逻辑已有单元测试覆盖。
 - 构建、测试、包 dry-run 均通过。
 
