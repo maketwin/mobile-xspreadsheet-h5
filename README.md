@@ -44,6 +44,11 @@ packages/mobile-spreadsheet-adapter
 
 适配包已补齐 JSDoc 注释和 `src/index.d.ts` 类型声明，业务项目接入时可以获得编辑器提示。
 
+## 完整文档
+
+- [H5 Excel 移动端适配完整中文文档](docs/mobile-excel-adapter-full-guide.md)
+- [项目改动总览](docs/change-summary.md)
+
 ## 本地预览
 
 ```bash
