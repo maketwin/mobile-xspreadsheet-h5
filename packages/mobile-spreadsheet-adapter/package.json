@@ -1,0 +1,21 @@
+{
+  "name": "@mobile-excel/x-spreadsheet-adapter",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src/index.ts",
+    "src/types.ts",
+    "src/runtime.ts",
+    "src/selection.ts",
+    "src/gesture.ts",
+    "README.md"
+  ]
+}

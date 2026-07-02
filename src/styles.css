@@ -14,6 +14,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* 防止 iOS 在横竖屏变化或字体增强时自动缩放 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body,
 #app {
@@ -21,6 +27,8 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* 阻断滚动串联：表格内的惯性滚动不应带动页面滚动 */
+  overscroll-behavior: none;
   color: var(--ink);
   background: #eef2f7;
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -40,7 +48,8 @@ button {
   height: 100vh;
   height: 100dvh;
   display: grid;
-  grid-template-rows: 64px minmax(0, 1fr);
+  /* 顶部行自动高度，便于适配刘海屏和安全区 */
+  grid-template-rows: auto minmax(0, 1fr);
   background: #fff;
   position: fixed;
   inset: 0;
@@ -53,23 +62,35 @@ button {
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  min-height: 56px;
+  /* 适配刘海屏状态栏和安全区（viewport-fit=cover） */
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, .96);
   backdrop-filter: blur(12px);
 }
 
 .icon-button {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #202938;
-  font-size: 27px;
+  font-size: 26px;
   line-height: 1;
+  -webkit-touch-callout: none;
+  transition: transform .08s ease, background-color .08s ease;
+}
+
+.icon-button:active,
+.perf-button:active,
+.small-button:active,
+.editor-toolbar button:active,
+.menu-actions button:active {
+  transform: scale(.93);
 }
 
 .icon-button.muted {
@@ -123,6 +144,12 @@ button {
   overflow: hidden;
   background: #fff;
   touch-action: pan-x pan-y;
+  /* 限制 overscroll，避免表格边缘惯性滚动触发页面回弹 */
+  overscroll-behavior: contain;
+  /* 表格由 canvas 渲染，此处选择文本只会干扰长按菜单 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   padding-bottom: calc(var(--editor-height) + 10px);
 }
 
@@ -148,6 +175,9 @@ button {
   font-size: 13px;
   width: 100% !important;
   height: 100% !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .x-spreadsheet-toolbar {
@@ -160,10 +190,53 @@ button {
 
 .x-spreadsheet-sheet {
   touch-action: pan-x pan-y;
+  /* iOS 内部 canvas 滚动容器使用惯性滚动 */
+  -webkit-overflow-scrolling: touch;
 }
 
 .x-spreadsheet-bottombar {
-  display: none !important;
+  min-height: calc(40px + var(--safe-bottom));
+  padding: 0 10px var(--safe-bottom) !important;
+  align-items: center;
+  background: rgba(248, 250, 252, .98) !important;
+  border-top: 1px solid var(--line) !important;
+  font-size: 13px;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu > li {
+  flex: 0 0 auto;
+  max-width: 180px;
+  height: 32px !important;
+  line-height: 32px !important;
+  margin: 4px 4px 4px 0;
+  padding: 0 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px;
+  background: transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu > li.active {
+  border-color: #b9d6ff !important;
+  background: #eaf2ff;
+  color: var(--blue);
+  font-weight: 700;
 }
 
 .x-spreadsheet-overlayer,
@@ -217,6 +290,65 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selection-handles {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+}
+
+.selection-handle {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.selection-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 2px 8px rgba(22, 119, 255, .35);
+}
+
+.selection-handle.start::after,
+.selection-handle.end::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--blue);
+}
+
+.selection-handle.start::after {
+  top: 17px;
+}
+
+.selection-handle.end::after {
+  bottom: 17px;
+}
+
+.selection-handles.dragging .selection-handle::before,
+.selection-handle:active::before {
+  transform: scale(1.18);
+  box-shadow: 0 3px 12px rgba(22, 119, 255, .46);
 }
 
 .long-press-menu {
@@ -342,7 +474,10 @@ button {
   padding: 0 10px;
   color: #17202a;
   background: #fff;
+  /* 16px 可防止 iOS 聚焦输入框时自动缩放；这里保留文本选择能力 */
   font-size: 16px;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #cellInput:focus,
@@ -378,6 +513,7 @@ button {
 
 .editor-toolbar button {
   min-width: 0;
+  min-height: 40px;
   border: 0;
   border-radius: 8px;
   background: #f4f7fb;
@@ -471,5 +607,57 @@ button {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     padding-left: 6px;
     padding-right: 6px;
+  }
+}
+
+/* 手机横屏高度紧张，压缩顶部栏和底部编辑器，为表格保留可用空间。 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .topbar {
+    min-height: 0;
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: 4px;
+  }
+
+  .topbar {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+
+  .icon-button {
+    width: 36px;
+    height: 32px;
+    font-size: 22px;
+  }
+
+  .title-block strong {
+    font-size: 14px;
+  }
+
+  .editor-meta {
+    height: 22px;
+    padding-top: 3px;
+  }
+
+  .input-row,
+  .date-editor {
+    min-height: 42px;
+    padding-top: 4px;
+    padding-bottom: 5px;
+  }
+
+  #cellInput,
+  #dateInput,
+  .small-button {
+    height: 32px;
+  }
+
+  .editor-toolbar {
+    height: 38px;
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+
+  .editor-toolbar button {
+    min-height: 32px;
+    font-size: 12px;
   }
 }
