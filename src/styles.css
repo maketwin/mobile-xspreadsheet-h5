@@ -195,7 +195,48 @@ button {
 }
 
 .x-spreadsheet-bottombar {
-  display: none !important;
+  min-height: calc(40px + var(--safe-bottom));
+  padding: 0 10px var(--safe-bottom) !important;
+  align-items: center;
+  background: rgba(248, 250, 252, .98) !important;
+  border-top: 1px solid var(--line) !important;
+  font-size: 13px;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu > li {
+  flex: 0 0 auto;
+  max-width: 180px;
+  height: 32px !important;
+  line-height: 32px !important;
+  margin: 4px 4px 4px 0;
+  padding: 0 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px;
+  background: transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.x-spreadsheet-bottombar .x-spreadsheet-menu > li.active {
+  border-color: #b9d6ff !important;
+  background: #eaf2ff;
+  color: var(--blue);
+  font-weight: 700;
 }
 
 .x-spreadsheet-overlayer,

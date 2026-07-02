@@ -50,7 +50,7 @@ function initSpreadsheet() {
     mobile: true,
     showToolbar: false,
     showContextmenu: false,
-    showBottomBar: false,
+    showBottomBar: true,
     view: {
       height: () => getSheetViewportSize().height,
       width: () => getSheetViewportSize().width,
