@@ -98,6 +98,7 @@ mobile-xspreadsheet-h5
 ├── src
 │   ├── demo
 │   │   ├── bottom-sheet-examples.ts
+│   │   ├── column-editor-config.ts
 │   │   ├── template.ts
 │   │   ├── sheet-data.ts
 │   │   ├── cell-format.ts
@@ -124,6 +125,7 @@ mobile-xspreadsheet-h5
 | `packages/mobile-spreadsheet-adapter/src/index.test.ts` | 单元测试 | 验证坐标转换、选区扩展、手势判定、长按、双击、拖选、捏合、destroy 清理等能力。 |
 | `src/demo/template.ts` | demo 视图 | 渲染移动端 demo DOM，并集中收集页面节点。 |
 | `src/demo/bottom-sheet-examples.ts` | demo 弹层示例 | 基于底部弹层组件配置成本中心搜索、城市双列选择和出差目的单选。 |
+| `src/demo/column-editor-config.ts` | demo 列编辑配置 | 声明每一列点击后打开的编辑器类型，未配置列默认文本输入框。 |
 | `src/demo/sheet-data.ts` | demo 数据 | 提供首屏排期数据和性能测试用大表格数据。 |
 | `src/demo/cell-format.ts` | demo 格式化 | 提供单元格地址、选区地址和日期输入值格式化。 |
 | `src/demo/perf.ts` | demo 性能测试 | 包装 `table.render` 统计渲染耗时，并执行生成、加载、滚动压测。 |
@@ -174,6 +176,7 @@ mobile-xspreadsheet-h5
 | `template.ts` | `renderAppShell(app)` | 渲染 demo 的移动端页面结构。 |
 | `template.ts` | `createDemoElements()` | 集中收集页面运行时需要的 DOM 节点。 |
 | `bottom-sheet-examples.ts` | `createBottomSheetExamples(options)` | 创建三个配置化底部弹层示例，并通过回调回填当前单元格。 |
+| `column-editor-config.ts` | `getColumnEditorConfig(ci)` | 根据列索引获取编辑配置；未配置列返回默认文本输入框配置。 |
 | `bottom-sheet.ts` | `new BottomSheet(options)` | 创建底部弹层基座，统一管理遮罩、标题、按钮、关闭和主体区域。 |
 | `bottom-sheet.ts` | `createSearchSelectSheet(options)` | 创建带搜索能力的选择弹层，适合成本中心、客户、项目等长列表。 |
 | `bottom-sheet.ts` | `createCascadePickerSheet(options)` | 创建多列选择弹层，适合省市、起止城市、组织层级等场景。 |
@@ -679,6 +682,50 @@ window.mobileBottomSheets.openCostCenter();
 window.mobileBottomSheets.openCityPicker();
 window.mobileBottomSheets.openTravelPurpose();
 ```
+
+## 10.2 列配置驱动编辑器
+
+列编辑配置位于：
+
+```text
+src/demo/column-editor-config.ts
+```
+
+每一列可以声明点击后打开什么编辑器：
+
+```ts
+export const columnEditorConfigs = [
+  { ci: 0, field: 'costCenter', title: '成本中心', editor: 'bottom-sheet', sheetKey: 'cost-center' },
+  { ci: 1, field: 'version', title: '版本', editor: 'number' },
+  { ci: 2, field: 'owner', title: '负责人', editor: 'text' },
+  { ci: 3, field: 'city', title: '城市', editor: 'bottom-sheet', sheetKey: 'city' },
+  { ci: 4, field: 'purpose', title: '出差目的', editor: 'bottom-sheet', sheetKey: 'purpose' },
+  { ci: 5, field: 'date', title: '日期', editor: 'date' },
+];
+```
+
+配置含义：
+
+| 参数 | 说明 |
+| --- | --- |
+| `ci` | 从 0 开始的列索引。 |
+| `field` | 字段名，建议和后端字段保持一致。 |
+| `title` | 列展示名。 |
+| `editor` | 点击单元格时打开的编辑器类型：`text`、`number`、`date`、`bottom-sheet`。 |
+| `sheetKey` | `editor = bottom-sheet` 时，对应 `bottomSheetConfigs` 的 `key`。 |
+
+点击单元格时执行流程：
+
+1. x-spreadsheet 先更新当前选中单元格。
+2. demo 根据 `state.selected.ci` 调用 `getColumnEditorConfig(ci)`。
+3. 如果是 `bottom-sheet`，调用 `bottomSheetExamples.open(sheetKey, context)`。
+4. 如果是 `text`、`number`、`date`，打开底部输入框。
+5. 未配置的列默认使用 `text` 输入框。
+
+这让后续业务扩展变成两步：
+
+1. 在 `bottomSheetConfigs` 增加一个组件配置。
+2. 在 `columnEditorConfigs` 把某一列绑定到这个 `sheetKey`。
 
 ## 11. 键盘与视口适配
 

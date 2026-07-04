@@ -119,6 +119,7 @@ export function createBottomSheetExamples({ commitValue, showGestureTip, mount }
       if (!config) return null;
       return openSheetByConfig(config, {
         mount,
+        ...context,
         currentValue: context.currentValue || '',
         commitValue,
         showGestureTip,
