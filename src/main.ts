@@ -6,6 +6,8 @@ import {
   selectedRangeClientRect,
 } from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 import { formatCellAddress, formatRangeAddress, normalizeDate } from './demo/cell-format.ts';
+import { createBottomSheetExamples } from './demo/bottom-sheet-examples.ts';
+import { getColumnEditorConfig } from './demo/column-editor-config.ts';
 import { installPerfHooks, runSpreadsheetPerf as runPerfTest } from './demo/perf.ts';
 import { buildSheetData, rows } from './demo/sheet-data.ts';
 import { createDemoElements, renderAppShell } from './demo/template.ts';
@@ -14,6 +16,7 @@ import './styles.css';
 const app = document.querySelector('#app');
 renderAppShell(app);
 const els = createDemoElements();
+let bottomSheetExamples = null;
 
 const state = {
   spreadsheet: null,
@@ -94,13 +97,7 @@ function updateSelection(cell, ri, ci) {
   els.cellInput.value = text;
   els.dateInput.value = normalizeDate(text);
 
-  if (ci === 5 || /^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    setEditorType('date', false);
-  } else if (ci === 1) {
-    setEditorType('number', false);
-  } else {
-    setEditorType('text', false);
-  }
+  setEditorType(getInputEditorType(ci, text), false);
   syncLongPressMenuContent();
   scheduleSelectionHandleUpdate();
 }
@@ -218,12 +215,45 @@ function cancelEdit() {
 }
 
 /**
+ * 根据列配置和当前文本推导底部输入框类型，未配置时默认文本。
+ */
+function getInputEditorType(ci, text) {
+  const config = getColumnEditorConfig(ci);
+  if (config.editor === 'date') return 'date';
+  if (config.editor === 'number') return 'number';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return 'date';
+  return 'text';
+}
+
+/**
+ * 点击单元格后按列配置打开编辑器；未配置的列默认打开文本输入框。
+ */
+function openEditorBySelectedColumn() {
+  if (state.selected.range) return;
+  if (state.selected.ri === 0) {
+    setEditing(false);
+    return;
+  }
+  const config = getColumnEditorConfig(state.selected.ci);
+  if (config.editor === 'bottom-sheet' && config.sheetKey) {
+    setEditing(false);
+    bottomSheetExamples?.open(config.sheetKey, {
+      currentValue: state.selected.text,
+      column: config,
+      selected: state.selected,
+    });
+    return;
+  }
+  enterEditMode(getInputEditorType(state.selected.ci, state.selected.text));
+}
+
+/**
  * 进入双击编辑模式，并启动键盘视口同步。
  */
-function enterEditMode() {
+function enterEditMode(type = state.editorType) {
   hideLongPressMenu();
   setEditing(true);
-  setEditorType(state.editorType, true);
+  setEditorType(type, true);
   // 移动端 WebView 往往会分阶段上报键盘视口变化。这里短时间多次同步，让底部编辑器和表格 canvas 一起稳定下来。
   scheduleKeyboardSync();
   scheduleViewportUpdate(180, true);
@@ -273,15 +303,15 @@ function handleAdapterSingleTap(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
   if (event.pointerType !== 'mouse' || event.button === 0) {
-    setEditing(false);
+    openEditorBySelectedColumn();
   }
 }
 
 /**
- * 处理 adapter 判定后的双击：进入底部编辑器。
+ * 处理 adapter 判定后的双击：按列配置打开对应编辑器。
  */
 function handleAdapterDoubleTap() {
-  enterEditMode();
+  openEditorBySelectedColumn();
 }
 
 /**
@@ -636,8 +666,11 @@ function bindEvents() {
       if (action === 'edit') setEditorType(state.editorType, true);
       if (action === 'copy') await copySelectedCell();
       if (action === 'clear') clearSelectedCell();
-      if (action === 'text') setEditorType('text', true);
-      if (action === 'date') setEditorType('date', true);
+      if (bottomSheetExamples?.open(action, { currentValue: state.selected.text })) {
+        hideLongPressMenu();
+        scheduleViewportUpdate(120);
+        return;
+      }
       if (action === 'zoom-in') setScale(state.scale + 0.1);
       if (action === 'zoom-out') setScale(state.scale - 0.1);
       hideLongPressMenu();
@@ -689,7 +722,9 @@ function bindEvents() {
 bindEvents();
 initSpreadsheet();
 mountAdapter();
+bottomSheetExamples = createBottomSheetExamples({ commitValue, showGestureTip, mount: els.appShell });
 window.runSpreadsheetPerf = runSpreadsheetPerf;
+window.mobileBottomSheets = bottomSheetExamples;
 setScale(1);
 syncKeyboardOffset();
 scheduleSelectionHandleUpdate();

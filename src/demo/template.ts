@@ -40,8 +40,9 @@ export function renderAppShell(app: Element | null): void {
             <button type="button" data-menu-action="edit">编辑</button>
             <button type="button" data-menu-action="copy">复制</button>
             <button type="button" data-menu-action="clear">清空</button>
-            <button type="button" data-menu-action="text">文本</button>
-            <button type="button" data-menu-action="date">日期</button>
+            <button type="button" data-menu-action="cost-center">成本中心</button>
+            <button type="button" data-menu-action="city">城市</button>
+            <button type="button" data-menu-action="purpose">出差目的</button>
             <button type="button" data-menu-action="zoom-in">放大</button>
             <button type="button" data-menu-action="zoom-out">缩小</button>
           </div>
