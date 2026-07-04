@@ -511,7 +511,8 @@ src/components/bottom-sheet.ts
 | 选择器 | `createSearchSelectSheet` | 搜索 + 列表选择，适合成本中心、客户、项目等。 |
 | 选择器 | `createCascadePickerSheet` | 多列选择，适合省市、出发/目的城市等。 |
 | 选择器 | `createActionSelectSheet` | 简单单选列表，适合出差目的、状态、类型等。 |
-| 示例 | `createBottomSheetExamples` | 把三个选择器接到当前 Excel demo，选中后回填单元格。 |
+| 配置 | `bottomSheetConfigs` | 用 `key / label / type / props / onSelected` 描述要展示的弹层。 |
+| 控制器 | `createBottomSheetExamples` | 按配置 key 打开对应组件，选中后统一回填当前单元格。 |
 
 `BottomSheet` 核心参数：
 
@@ -527,6 +528,53 @@ src/components/bottom-sheet.ts
 | `render(body, sheet)` | 主体渲染函数。 |
 | `onAction(key, sheet)` | 点击头部按钮时触发；返回 `false` 可阻止自动关闭。 |
 | `onClose()` | 关闭完成后触发。 |
+
+配置驱动展示：
+
+```ts
+export const bottomSheetConfigs = [
+  {
+    key: 'cost-center',
+    label: '成本中心',
+    type: 'search-select',
+    getValue: context => context.currentValue,
+    props: {
+      title: '成本中心',
+      searchable: true,
+      placeholder: '搜索',
+      remote: {
+        url: '/api/cost-centers/search',
+        keywordParam: 'keyword',
+        debounceMs: 300,
+        minKeywordLength: 1,
+        mapResponse(response) {
+          return response.data.map(item => ({
+            value: item.code,
+            label: `${item.code}，${item.name}`,
+          }));
+        },
+      },
+    },
+    onSelected({ value, commitValue }) {
+      commitValue(value || '');
+    },
+  },
+];
+```
+
+展示时只传配置 key 和上下文：
+
+```ts
+const bottomSheets = createBottomSheetExamples({
+  mount: document.querySelector('.mobile-excel'),
+  commitValue,
+  showGestureTip,
+});
+
+bottomSheets.open('cost-center', {
+  currentValue: state.selected.text,
+});
+```
 
 模糊搜索选择框：
 
@@ -622,6 +670,11 @@ sheet.show();
 同时暴露调试入口：
 
 ```ts
+window.mobileBottomSheets.open('cost-center', { currentValue: 'A001' });
+window.mobileBottomSheets.open('city');
+window.mobileBottomSheets.open('purpose', { currentValue: '维护客户关系' });
+
+// 兼容便捷方法：
 window.mobileBottomSheets.openCostCenter();
 window.mobileBottomSheets.openCityPicker();
 window.mobileBottomSheets.openTravelPurpose();

@@ -638,9 +638,11 @@ function bindEvents() {
       if (action === 'edit') setEditorType(state.editorType, true);
       if (action === 'copy') await copySelectedCell();
       if (action === 'clear') clearSelectedCell();
-      if (action === 'cost-center') bottomSheetExamples?.openCostCenter(state.selected.text);
-      if (action === 'city') bottomSheetExamples?.openCityPicker();
-      if (action === 'purpose') bottomSheetExamples?.openTravelPurpose(state.selected.text);
+      if (bottomSheetExamples?.open(action, { currentValue: state.selected.text })) {
+        hideLongPressMenu();
+        scheduleViewportUpdate(120);
+        return;
+      }
       if (action === 'zoom-in') setScale(state.scale + 0.1);
       if (action === 'zoom-out') setScale(state.scale - 0.1);
       hideLongPressMenu();
