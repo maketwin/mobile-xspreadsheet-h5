@@ -43,10 +43,42 @@ export interface SheetOption<T = string> {
   disabled?: boolean;
 }
 
+export interface SearchRequestContext {
+  /** 当前输入框关键字。 */
+  keyword: string;
+  /** 解析后的请求地址。 */
+  url: string;
+  /** 取消上一次请求的信号。 */
+  signal: AbortSignal;
+}
+
+export interface RemoteSearchOptions<T = string> {
+  /** 搜索接口地址，也可以根据关键字动态生成地址。 */
+  url: string | ((keyword: string) => string);
+  /** GET 请求时追加到 URL 上的关键字参数名。默认 keyword。 */
+  keywordParam?: string;
+  /** 请求方式。默认 GET。 */
+  method?: 'GET' | 'POST';
+  /** 请求头。 */
+  headers?: Record<string, string>;
+  /** 输入防抖时间。默认 300ms。 */
+  debounceMs?: number;
+  /** 触发远程搜索所需的最少字符数。默认 0。 */
+  minKeywordLength?: number;
+  /** 打开弹层时是否立即请求一次。默认 true。 */
+  immediate?: boolean;
+  /** 自定义请求函数；传入后不再使用默认 fetch。 */
+  request?: (context: SearchRequestContext) => Promise<SheetOption<T>[]>;
+  /** 将接口响应映射为选择器选项。 */
+  mapResponse?: (response: unknown) => SheetOption<T>[];
+}
+
 export interface SearchSelectSheetOptions<T = string> {
   title: string;
   mount?: HTMLElement;
-  options: SheetOption<T>[];
+  options?: SheetOption<T>[];
+  /** 远程搜索配置。传入后输入关键字会自动请求接口。 */
+  remote?: RemoteSearchOptions<T>;
   value?: T | T[] | null;
   multiple?: boolean;
   searchable?: boolean;
@@ -185,10 +217,17 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
       : [];
   initialValues.forEach(value => selected.add(value));
   let keyword = '';
+  let visibleOptions = options.options || [];
+  let loading = false;
+  let errorText = '';
+  let debounceTimer = 0;
+  let activeController: AbortController | null = null;
+  let requestId = 0;
 
   function emitChange(sheet: BottomSheet): void {
     const values = [...selected];
-    const selectedOptions = options.options.filter(option => selected.has(option.value));
+    const optionPool = mergeOptions(options.options || [], visibleOptions);
+    const selectedOptions = optionPool.filter(option => selected.has(option.value));
     const value = options.multiple ? values : values[0] ?? null;
     const option = options.multiple ? selectedOptions : selectedOptions[0] ?? null;
     options.onChange?.(value, option);
@@ -197,10 +236,12 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
 
   function render(body: HTMLElement, sheet: BottomSheet): void {
     const normalized = keyword.trim().toLowerCase();
-    const filtered = options.options.filter((option) => {
-      const haystack = `${option.label} ${option.description || ''} ${option.keywords || ''}`.toLowerCase();
-      return !normalized || haystack.includes(normalized);
-    });
+    const filtered = options.remote
+      ? visibleOptions
+      : (options.options || []).filter((option) => {
+        const haystack = `${option.label} ${option.description || ''} ${option.keywords || ''}`.toLowerCase();
+        return !normalized || haystack.includes(normalized);
+      });
     body.innerHTML = `
       ${options.searchable !== false ? `
         <label class="sheet-search">
@@ -209,14 +250,16 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
         </label>
       ` : ''}
       <div class="sheet-option-list">
-        ${filtered.length
-          ? filtered.map((option, index) => renderOption(option, selected.has(option.value), index)).join('')
-          : `<div class="sheet-empty">${escapeHtml(options.emptyText || '暂无匹配选项')}</div>`}
+        ${renderSearchState(filtered)}
       </div>
     `;
 
     body.querySelector('input')?.addEventListener('input', (event) => {
       keyword = (event.target as HTMLInputElement).value;
+      if (options.remote) {
+        scheduleRemoteSearch(sheet);
+        return;
+      }
       sheet.setContent(render);
     });
 
@@ -237,12 +280,66 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
     });
   }
 
-  return new BottomSheet({
+  function renderSearchState(filtered: SheetOption<T>[]): string {
+    if (loading) return '<div class="sheet-empty">搜索中...</div>';
+    if (errorText) return `<div class="sheet-empty error">${escapeHtml(errorText)}</div>`;
+    if (options.remote && keyword.trim().length < (options.remote.minKeywordLength || 0)) {
+      return `<div class="sheet-empty">${escapeHtml(`请输入至少 ${options.remote.minKeywordLength} 个字符`)}</div>`;
+    }
+    if (!filtered.length) return `<div class="sheet-empty">${escapeHtml(options.emptyText || '暂无匹配选项')}</div>`;
+    return filtered.map((option, index) => renderOption(option, selected.has(option.value), index)).join('');
+  }
+
+  function scheduleRemoteSearch(sheet: BottomSheet): void {
+    window.clearTimeout(debounceTimer);
+    const delay = options.remote?.debounceMs ?? 300;
+    debounceTimer = window.setTimeout(() => {
+      runRemoteSearch(sheet);
+    }, delay);
+  }
+
+  async function runRemoteSearch(sheet: BottomSheet): Promise<void> {
+    const remote = options.remote;
+    if (!remote) return;
+    const minKeywordLength = remote.minKeywordLength || 0;
+    if (keyword.trim().length < minKeywordLength) {
+      visibleOptions = [];
+      loading = false;
+      errorText = '';
+      sheet.setContent(render);
+      return;
+    }
+    activeController?.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    const currentRequestId = requestId + 1;
+    requestId = currentRequestId;
+    loading = true;
+    errorText = '';
+    sheet.setContent(render);
+    try {
+      const result = await requestRemoteOptions(remote, keyword, controller.signal);
+      if (currentRequestId !== requestId) return;
+      visibleOptions = result;
+      loading = false;
+      sheet.setContent(render);
+    } catch (error) {
+      if (controller.signal.aborted || currentRequestId !== requestId) return;
+      visibleOptions = [];
+      loading = false;
+      errorText = error instanceof Error ? error.message : '搜索失败，请重试';
+      sheet.setContent(render);
+    }
+  }
+
+  const sheet = new BottomSheet({
     title: options.title,
     mount: options.mount,
     className: 'bottom-sheet-select',
     render,
   });
+  if (options.remote && options.remote.immediate !== false) runRemoteSearch(sheet);
+  return sheet;
 }
 
 /** 创建多列联动选择弹层。 */
@@ -334,6 +431,68 @@ function renderOption<T>(option: SheetOption<T>, active: boolean, index: number)
       <span class="sheet-option-check">✓</span>
     </button>
   `;
+}
+
+async function requestRemoteOptions<T>(
+  remote: RemoteSearchOptions<T>,
+  keyword: string,
+  signal: AbortSignal,
+): Promise<SheetOption<T>[]> {
+  const url = buildSearchUrl(remote, keyword);
+  if (remote.request) return remote.request({ keyword, url, signal });
+  const method = remote.method || 'GET';
+  const response = await fetch(url, {
+    method,
+    headers: {
+      ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+      ...(remote.headers || {}),
+    },
+    body: method === 'POST' ? JSON.stringify({ [remote.keywordParam || 'keyword']: keyword }) : undefined,
+    signal,
+  });
+  if (!response.ok) throw new Error(`搜索失败：${response.status}`);
+  const data = await response.json();
+  return remote.mapResponse ? remote.mapResponse(data) : defaultMapResponse(data);
+}
+
+function buildSearchUrl<T>(remote: RemoteSearchOptions<T>, keyword: string): string {
+  const rawUrl = typeof remote.url === 'function' ? remote.url(keyword) : remote.url;
+  if ((remote.method || 'GET') !== 'GET') return rawUrl;
+  const url = new URL(rawUrl, window.location.origin);
+  url.searchParams.set(remote.keywordParam || 'keyword', keyword);
+  return url.toString();
+}
+
+function defaultMapResponse<T>(response: unknown): SheetOption<T>[] {
+  const record = response as Record<string, unknown>;
+  const list = Array.isArray(response)
+    ? response
+    : Array.isArray(record?.data)
+      ? record.data
+      : Array.isArray(record?.list)
+        ? record.list
+        : Array.isArray(record?.records)
+          ? record.records
+          : [];
+  return list.map((item) => {
+    if (typeof item === 'string') return { value: item as T, label: item };
+    const row = item as Record<string, unknown>;
+    const value = (row.value ?? row.id ?? row.code ?? row.name ?? row.label) as T;
+    const label = String(row.label ?? row.name ?? row.text ?? row.value ?? value ?? '');
+    return {
+      value,
+      label,
+      description: row.description ? String(row.description) : undefined,
+      keywords: row.keywords ? String(row.keywords) : undefined,
+      disabled: Boolean(row.disabled),
+    };
+  });
+}
+
+function mergeOptions<T>(left: SheetOption<T>[], right: SheetOption<T>[]): SheetOption<T>[] {
+  const map = new Map<T, SheetOption<T>>();
+  [...left, ...right].forEach(option => map.set(option.value, option));
+  return [...map.values()];
 }
 
 function escapeHtml(value: string): string {

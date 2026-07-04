@@ -537,9 +537,19 @@ const sheet = createSearchSelectSheet({
   searchable: true,
   placeholder: '搜索',
   value: currentValue,
-  options: [
-    { value: 'A001，电力一组', label: 'A001，电力一组', keywords: '成本中心 电力 A001' },
-  ],
+  remote: {
+    url: '/api/cost-centers/search',
+    keywordParam: 'keyword',
+    debounceMs: 300,
+    minKeywordLength: 1,
+    mapResponse(response) {
+      return response.data.map(item => ({
+        value: item.code,
+        label: `${item.code}，${item.name}`,
+        keywords: `${item.code} ${item.name}`,
+      }));
+    },
+  },
   onChange(value) {
     commitValue(value || '');
     sheet.destroy();
@@ -548,6 +558,20 @@ const sheet = createSearchSelectSheet({
 
 sheet.show();
 ```
+
+远程搜索配置：
+
+| 参数 | 说明 |
+| --- | --- |
+| `remote.url` | 搜索接口地址，也可以传 `(keyword) => url` 动态生成 URL。 |
+| `remote.keywordParam` | GET 请求追加的关键字参数名，默认 `keyword`。 |
+| `remote.method` | 请求方式，支持 `GET` 和 `POST`，默认 `GET`。 |
+| `remote.headers` | 请求头，例如 token、租户、业务系统标识。 |
+| `remote.debounceMs` | 输入防抖时间，默认 `300ms`。 |
+| `remote.minKeywordLength` | 触发搜索的最少字符数，默认 `0`。 |
+| `remote.immediate` | 打开弹层时是否立即请求一次，默认 `true`。 |
+| `remote.request` | 自定义请求函数，传入后不再使用默认 `fetch`。 |
+| `remote.mapResponse` | 将接口响应转换为 `{ value, label, description, keywords }` 选项数组。 |
 
 城市选择框：
 

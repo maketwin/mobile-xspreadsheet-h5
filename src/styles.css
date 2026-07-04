@@ -661,6 +661,10 @@ button {
   text-align: center;
 }
 
+.sheet-empty.error {
+  color: #c2410c;
+}
+
 .cascade-picker {
   height: 280px;
   display: grid;

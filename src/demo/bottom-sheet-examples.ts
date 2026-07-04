@@ -58,10 +58,17 @@ export function createBottomSheetExamples({ commitValue, showGestureTip, mount }
       const sheet = createSearchSelectSheet({
         title: '成本中心',
         mount,
-        options: costCenters,
         value: currentValue,
         searchable: true,
         placeholder: '搜索',
+        emptyText: '没有找到匹配的成本中心',
+        remote: {
+          url: '/api/cost-centers/search',
+          keywordParam: 'keyword',
+          debounceMs: 300,
+          minKeywordLength: 1,
+          request: mockCostCenterSearch,
+        },
         onChange(value) {
           commitValue(value || '');
           showGestureTip('已选择成本中心');
@@ -101,4 +108,19 @@ export function createBottomSheetExamples({ commitValue, showGestureTip, mount }
       sheet.show();
     },
   };
+}
+
+async function mockCostCenterSearch({ keyword, signal }) {
+  await new Promise((resolve, reject) => {
+    const timer = window.setTimeout(resolve, 240);
+    signal.addEventListener('abort', () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('请求已取消', 'AbortError'));
+    }, { once: true });
+  });
+  const normalized = keyword.trim().toLowerCase();
+  return costCenters.filter((option) => {
+    const haystack = `${option.label} ${option.keywords || ''}`.toLowerCase();
+    return haystack.includes(normalized);
+  });
 }
