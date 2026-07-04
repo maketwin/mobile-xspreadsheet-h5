@@ -6,6 +6,7 @@ import {
   selectedRangeClientRect,
 } from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 import { formatCellAddress, formatRangeAddress, normalizeDate } from './demo/cell-format.ts';
+import { createBottomSheetExamples } from './demo/bottom-sheet-examples.ts';
 import { installPerfHooks, runSpreadsheetPerf as runPerfTest } from './demo/perf.ts';
 import { buildSheetData, rows } from './demo/sheet-data.ts';
 import { createDemoElements, renderAppShell } from './demo/template.ts';
@@ -14,6 +15,7 @@ import './styles.css';
 const app = document.querySelector('#app');
 renderAppShell(app);
 const els = createDemoElements();
+let bottomSheetExamples = null;
 
 const state = {
   spreadsheet: null,
@@ -636,8 +638,9 @@ function bindEvents() {
       if (action === 'edit') setEditorType(state.editorType, true);
       if (action === 'copy') await copySelectedCell();
       if (action === 'clear') clearSelectedCell();
-      if (action === 'text') setEditorType('text', true);
-      if (action === 'date') setEditorType('date', true);
+      if (action === 'cost-center') bottomSheetExamples?.openCostCenter(state.selected.text);
+      if (action === 'city') bottomSheetExamples?.openCityPicker();
+      if (action === 'purpose') bottomSheetExamples?.openTravelPurpose(state.selected.text);
       if (action === 'zoom-in') setScale(state.scale + 0.1);
       if (action === 'zoom-out') setScale(state.scale - 0.1);
       hideLongPressMenu();
@@ -689,7 +692,9 @@ function bindEvents() {
 bindEvents();
 initSpreadsheet();
 mountAdapter();
+bottomSheetExamples = createBottomSheetExamples({ commitValue, showGestureTip, mount: els.appShell });
 window.runSpreadsheetPerf = runSpreadsheetPerf;
+window.mobileBottomSheets = bottomSheetExamples;
 setScale(1);
 syncKeyboardOffset();
 scheduleSelectionHandleUpdate();

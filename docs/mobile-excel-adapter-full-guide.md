@@ -97,10 +97,13 @@ mobile-xspreadsheet-h5
 │           └── index.test.ts
 ├── src
 │   ├── demo
+│   │   ├── bottom-sheet-examples.ts
 │   │   ├── template.ts
 │   │   ├── sheet-data.ts
 │   │   ├── cell-format.ts
 │   │   └── perf.ts
+│   ├── components
+│   │   └── bottom-sheet.ts
 │   ├── main.ts
 │   ├── styles.css
 │   └── vendor
@@ -120,9 +123,11 @@ mobile-xspreadsheet-h5
 | `packages/mobile-spreadsheet-adapter/src/gesture.ts` | 手势运行时 | 负责 pointer 状态机，识别单击、双击、长按、拖选、选区手柄拖拽、边缘自动滚动和双指捏合。 |
 | `packages/mobile-spreadsheet-adapter/src/index.test.ts` | 单元测试 | 验证坐标转换、选区扩展、手势判定、长按、双击、拖选、捏合、destroy 清理等能力。 |
 | `src/demo/template.ts` | demo 视图 | 渲染移动端 demo DOM，并集中收集页面节点。 |
+| `src/demo/bottom-sheet-examples.ts` | demo 弹层示例 | 基于底部弹层组件配置成本中心搜索、城市双列选择和出差目的单选。 |
 | `src/demo/sheet-data.ts` | demo 数据 | 提供首屏排期数据和性能测试用大表格数据。 |
 | `src/demo/cell-format.ts` | demo 格式化 | 提供单元格地址、选区地址和日期输入值格式化。 |
 | `src/demo/perf.ts` | demo 性能测试 | 包装 `table.render` 统计渲染耗时，并执行生成、加载、滚动压测。 |
+| `src/components/bottom-sheet.ts` | 通用组件 | 提供 BottomSheet 基座、搜索选择、级联选择和单选操作弹层。 |
 | `src/main.ts` | demo 编排 | 创建 spreadsheet，接入 adapter，管理编辑器、键盘、缩放、长按菜单、手柄和视口 resize。 |
 | `src/styles.css` | demo 样式 | 定义移动端视口、底部编辑器、长按菜单、选区手柄、键盘状态和缩放状态样式。 |
 | `src/vendor/x-spreadsheet` | Excel 基座 | vendored x-spreadsheet 引擎源码，当前方案要求不再修改该目录。 |
@@ -168,6 +173,11 @@ mobile-xspreadsheet-h5
 | --- | --- | --- |
 | `template.ts` | `renderAppShell(app)` | 渲染 demo 的移动端页面结构。 |
 | `template.ts` | `createDemoElements()` | 集中收集页面运行时需要的 DOM 节点。 |
+| `bottom-sheet-examples.ts` | `createBottomSheetExamples(options)` | 创建三个配置化底部弹层示例，并通过回调回填当前单元格。 |
+| `bottom-sheet.ts` | `new BottomSheet(options)` | 创建底部弹层基座，统一管理遮罩、标题、按钮、关闭和主体区域。 |
+| `bottom-sheet.ts` | `createSearchSelectSheet(options)` | 创建带搜索能力的选择弹层，适合成本中心、客户、项目等长列表。 |
+| `bottom-sheet.ts` | `createCascadePickerSheet(options)` | 创建多列选择弹层，适合省市、起止城市、组织层级等场景。 |
+| `bottom-sheet.ts` | `createActionSelectSheet(options)` | 创建普通单选操作弹层，适合出差目的、状态、类型等短列表。 |
 | `sheet-data.ts` | `buildSheetData()` | 构建首屏小数据量排期表。 |
 | `sheet-data.ts` | `buildLargeSheetData(rowCount, colCount)` | 构建性能测试用大数据量表格。 |
 | `cell-format.ts` | `toColumnName(index)` | 将列索引转换为 Excel 风格列名。 |
@@ -477,6 +487,121 @@ demo 负责：
 - 判断捏合。
 - 调用表格运行时更新选区。
 - 在拖选靠近边缘时自动滚动。
+
+## 10.1 底部弹层组件体系
+
+底部弹层组件位于：
+
+```text
+src/components/bottom-sheet.ts
+```
+
+设计目标：
+
+- 统一底部弹出动画、遮罩、圆角、安全区和关闭行为。
+- 业务只传配置，不直接拼 DOM。
+- 选择结果通过回调返回，宿主决定是否回填单元格、请求接口或埋点。
+- 可挂载到 `document.body`，也可挂载到 `.mobile-excel`，方便桌面预览和移动端真机共用。
+
+组件分层：
+
+| 层级 | 组件 | 职责 |
+| --- | --- | --- |
+| 基座 | `BottomSheet` | 管理弹层容器、标题栏、按钮、遮罩、打开关闭、主体渲染。 |
+| 选择器 | `createSearchSelectSheet` | 搜索 + 列表选择，适合成本中心、客户、项目等。 |
+| 选择器 | `createCascadePickerSheet` | 多列选择，适合省市、出发/目的城市等。 |
+| 选择器 | `createActionSelectSheet` | 简单单选列表，适合出差目的、状态、类型等。 |
+| 示例 | `createBottomSheetExamples` | 把三个选择器接到当前 Excel demo，选中后回填单元格。 |
+
+`BottomSheet` 核心参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `title` | 弹层标题。 |
+| `mount` | 挂载节点；不传时挂到 `document.body`。 |
+| `className` | 业务自定义类名。 |
+| `mask` | 是否展示遮罩，默认 `true`。 |
+| `closeOnMask` | 点击遮罩是否关闭，默认 `true`。 |
+| `closable` | 是否展示关闭按钮，默认 `true`。 |
+| `actions` | 头部左右按钮配置，例如取消、确定。 |
+| `render(body, sheet)` | 主体渲染函数。 |
+| `onAction(key, sheet)` | 点击头部按钮时触发；返回 `false` 可阻止自动关闭。 |
+| `onClose()` | 关闭完成后触发。 |
+
+模糊搜索选择框：
+
+```ts
+const sheet = createSearchSelectSheet({
+  title: '成本中心',
+  mount: document.querySelector('.mobile-excel'),
+  searchable: true,
+  placeholder: '搜索',
+  value: currentValue,
+  options: [
+    { value: 'A001，电力一组', label: 'A001，电力一组', keywords: '成本中心 电力 A001' },
+  ],
+  onChange(value) {
+    commitValue(value || '');
+    sheet.destroy();
+  },
+});
+
+sheet.show();
+```
+
+城市选择框：
+
+```ts
+const sheet = createCascadePickerSheet({
+  title: '选择城市',
+  mount: document.querySelector('.mobile-excel'),
+  value: ['浙江省', '杭州市'],
+  columns: [
+    { title: '省份', options: [{ value: '浙江省', label: '浙江省' }] },
+    { title: '城市', options: [{ value: '杭州市', label: '杭州市' }] },
+  ],
+  onConfirm(values, options) {
+    commitValue(options.map(option => option.label).join(' '));
+    sheet.destroy();
+  },
+});
+
+sheet.show();
+```
+
+单选操作框：
+
+```ts
+const sheet = createActionSelectSheet({
+  title: '出差目的',
+  mount: document.querySelector('.mobile-excel'),
+  value: currentValue,
+  options: [
+    { value: '找新线索', label: '找新线索' },
+    { value: '维护客户关系', label: '维护客户关系' },
+  ],
+  onChange(value) {
+    commitValue(value);
+    sheet.destroy();
+  },
+});
+
+sheet.show();
+```
+
+当前 demo 已在长按菜单里接入三个入口：
+
+- `成本中心`：打开模糊搜索选择框。
+- `城市`：打开城市双列选择框。
+- `出差目的`：打开单选操作框。
+
+同时暴露调试入口：
+
+```ts
+window.mobileBottomSheets.openCostCenter();
+window.mobileBottomSheets.openCityPicker();
+window.mobileBottomSheets.openTravelPurpose();
+```
 
 ## 11. 键盘与视口适配
 
