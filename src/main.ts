@@ -560,14 +560,12 @@ function setScale(nextScale, { immediate = true, updateViewport = true } = {}) {
 }
 
 /**
- * 处理 adapter 判定后的单击：关闭菜单并退出编辑态。
+ * 处理 adapter 判定后的单击：只选中单元格，不进入编辑态。
  */
 function handleAdapterSingleTap(event) {
   if (event.target.closest('.long-press-menu')) return;
   hideLongPressMenu();
-  if (event.pointerType !== 'mouse' || event.button === 0) {
-    openEditorBySelectedColumn();
-  }
+  setEditing(false);
 }
 
 /**
