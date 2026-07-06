@@ -194,15 +194,22 @@ function renderHeaderFilters(force = false) {
   const { cols } = data;
   const indexWidth = cols.indexWidth || 52;
   const scrollX = data.scroll?.x || 0;
+  const viewportWidth = getSheetViewportSize().width;
+  const buttonSize = 22;
+  const buttonGap = 8;
   let left = indexWidth - scrollX;
   els.headerFilterLayer.innerHTML = columns.map((title, ci) => {
     const width = cols.getWidth?.(ci) || 100;
-    const active = state.filters[ci] instanceof Set;
-    const style = `left:${left + width - 36}px;width:24px;`;
+    const cellLeft = left;
+    const cellRight = cellLeft + width;
     left += width;
+    if (width < 44 || cellRight < indexWidth + 8 || cellLeft > viewportWidth - 8) return '';
+    const active = state.filters[ci] instanceof Set;
+    const buttonLeft = Math.min(cellRight - buttonSize - buttonGap, viewportWidth - buttonSize - 6);
+    const style = `left:${Math.max(indexWidth + 4, buttonLeft)}px;width:${buttonSize}px;height:${buttonSize}px;`;
     return `
       <button class="header-filter-button${active ? ' active' : ''}" type="button" style="${style}" data-filter-ci="${ci}" aria-label="${title}筛选">
-        ▾
+        <span aria-hidden="true"></span>
       </button>
     `;
   }).join('');

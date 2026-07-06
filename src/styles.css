@@ -174,35 +174,44 @@ button {
   top: 25px;
   left: 0;
   z-index: 42;
+  width: 100%;
   height: 30px;
+  overflow: hidden;
   pointer-events: none;
 }
 
 .header-filter-button {
   position: absolute;
-  top: 2px;
-  height: 26px;
+  top: 4px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, .72);
-  color: #7a8493;
-  font-size: 13px;
-  font-weight: 850;
-  line-height: 1;
+  border-radius: 5px;
+  background: rgba(248, 250, 252, .86);
+  color: #667085;
   pointer-events: auto;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  backdrop-filter: blur(8px);
+}
+
+.header-filter-button span {
+  width: 12px;
+  height: 12px;
+  display: block;
+  background: currentColor;
+  clip-path: polygon(7% 8%, 93% 8%, 61% 48%, 61% 88%, 39% 88%, 39% 48%);
 }
 
 .header-filter-button.active {
   border-color: #9dc7ff;
-  background: #eaf2ff;
+  background: rgba(234, 242, 255, .96);
   color: var(--blue);
+  box-shadow: 0 2px 8px rgba(10, 120, 255, .16);
 }
 
 .header-filter-button:active {
   background: #dcebff;
+  transform: scale(.94);
 }
 
 #xspreadsheet {
