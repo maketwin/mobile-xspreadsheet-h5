@@ -171,7 +171,7 @@ button {
 
 .header-filter-layer {
   position: absolute;
-  top: 25px;
+  top: 30px;
   left: 0;
   z-index: 42;
   width: 100%;
@@ -182,7 +182,8 @@ button {
 
 .header-filter-button {
   position: absolute;
-  top: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   display: grid;
   place-items: center;
   border: 1px solid transparent;
@@ -208,7 +209,7 @@ button {
 
 .header-filter-button:active {
   background: #edf5ff;
-  transform: scale(.94);
+  transform: translateY(-50%) scale(.94);
 }
 
 #xspreadsheet {
@@ -290,11 +291,9 @@ button {
 }
 
 .x-spreadsheet-selector .x-spreadsheet-selector-area {
-  border: 2px solid var(--excel-blue) !important;
-  background: var(--excel-blue-soft) !important;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, .85) inset,
-    0 0 0 1px rgba(10, 120, 255, .16);
+  border: 1.5px solid var(--excel-blue) !important;
+  background: rgba(10, 120, 255, .06) !important;
+  box-shadow: 0 0 0 1px rgba(10, 120, 255, .10);
 }
 
 .x-spreadsheet-selector .x-spreadsheet-selector-corner {
@@ -378,15 +377,15 @@ button {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  border: 2.5px solid #fff;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border: 2px solid #fff;
   border-radius: 50%;
   background: var(--excel-blue);
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, .18),
-    0 3px 10px rgba(10, 120, 255, .38);
+    0 1px 2px rgba(15, 23, 42, .16),
+    0 2px 6px rgba(10, 120, 255, .28);
   transition: transform .12s ease, box-shadow .12s ease;
 }
 
@@ -395,28 +394,28 @@ button {
   content: "";
   position: absolute;
   left: 50%;
-  width: 3px;
-  height: 10px;
-  margin-left: -1.5px;
+  width: 2px;
+  height: 7px;
+  margin-left: -1px;
   border-radius: 999px;
   background: var(--excel-blue);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .62);
 }
 
 .selection-handle.start::after {
-  top: 22px;
+  top: 23px;
 }
 
 .selection-handle.end::after {
-  bottom: 22px;
+  bottom: 23px;
 }
 
 .selection-handles.dragging .selection-handle::before,
 .selection-handle:active::before {
-  transform: scale(1.28);
+  transform: scale(1.18);
   box-shadow:
-    0 2px 4px rgba(15, 23, 42, .22),
-    0 6px 16px rgba(10, 120, 255, .48);
+    0 2px 4px rgba(15, 23, 42, .18),
+    0 4px 10px rgba(10, 120, 255, .34);
 }
 
 .long-press-menu {

@@ -45,7 +45,7 @@ export function buildSheetData(sourceRows = rows) {
     freeze: 'A2',
     styles: [
       { align: 'center', valign: 'middle' },
-      { bgcolor: '#eef5ff', color: '#1677ff', bold: true, align: 'center' },
+      { bgcolor: '#eef5ff', color: '#1677ff', bold: true, align: 'left', valign: 'middle' },
       { color: '#087a5a', align: 'center' },
     ],
     rows: { len: 120, ...rowData },
@@ -131,7 +131,8 @@ export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
         bgcolor: '#e8f1ff',
         color: '#1455d9',
         font: { bold: true },
-        align: 'center',
+        align: 'left',
+        valign: 'middle',
         border: { bottom: ['medium', '#9bbcf7'] },
       },
       { color: '#087a5a', align: 'center' },
