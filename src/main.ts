@@ -195,18 +195,21 @@ function renderHeaderFilters(force = false) {
   const indexWidth = cols.indexWidth || 52;
   const scrollX = data.scroll?.x || 0;
   const viewportWidth = getSheetViewportSize().width;
-  const buttonSize = 22;
-  const buttonGap = 8;
+  const buttonSize = 18;
+  const buttonGap = 10;
   let left = indexWidth - scrollX;
   els.headerFilterLayer.innerHTML = columns.map((title, ci) => {
     const width = cols.getWidth?.(ci) || 100;
     const cellLeft = left;
     const cellRight = cellLeft + width;
     left += width;
-    if (width < 44 || cellRight < indexWidth + 8 || cellLeft > viewportWidth - 8) return '';
+    const visibleLeft = Math.max(cellLeft, indexWidth);
+    const visibleRight = Math.min(cellRight, viewportWidth);
+    const visibleWidth = visibleRight - visibleLeft;
+    if (width < 52 || visibleWidth < 52 || cellRight > viewportWidth - 2) return '';
     const active = state.filters[ci] instanceof Set;
-    const buttonLeft = Math.min(cellRight - buttonSize - buttonGap, viewportWidth - buttonSize - 6);
-    const style = `left:${Math.max(indexWidth + 4, buttonLeft)}px;width:${buttonSize}px;height:${buttonSize}px;`;
+    const buttonLeft = Math.min(cellRight - buttonSize - buttonGap, visibleRight - buttonSize - buttonGap);
+    const style = `left:${Math.max(visibleLeft + 6, buttonLeft)}px;width:${buttonSize}px;height:${buttonSize}px;`;
     return `
       <button class="header-filter-button${active ? ' active' : ''}" type="button" style="${style}" data-filter-ci="${ci}" aria-label="${title}筛选">
         <span aria-hidden="true"></span>

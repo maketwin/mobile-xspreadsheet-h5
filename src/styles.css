@@ -182,21 +182,19 @@ button {
 
 .header-filter-button {
   position: absolute;
-  top: 4px;
+  top: 6px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 5px;
-  background: rgba(248, 250, 252, .86);
+  border-radius: 4px;
+  background: transparent;
   color: #667085;
   pointer-events: auto;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
-  backdrop-filter: blur(8px);
 }
 
 .header-filter-button span {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   display: block;
   background: currentColor;
   clip-path: polygon(7% 8%, 93% 8%, 61% 48%, 61% 88%, 39% 88%, 39% 48%);
@@ -204,13 +202,12 @@ button {
 
 .header-filter-button.active {
   border-color: #9dc7ff;
-  background: rgba(234, 242, 255, .96);
+  background: #eaf2ff;
   color: var(--blue);
-  box-shadow: 0 2px 8px rgba(10, 120, 255, .16);
 }
 
 .header-filter-button:active {
-  background: #dcebff;
+  background: #edf5ff;
   transform: scale(.94);
 }
 
