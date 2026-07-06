@@ -38,6 +38,7 @@
 - 第一行标题默认展示筛选入口。
 - 点击标题筛选入口后，从顶部弹出列数据筛选面板。
 - 支持按列多选筛选、全选、清除筛选，并保持首行标题不参与过滤。
+- 筛选入口会跟随列宽调整和横向滚动实时对齐表头。
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量渲染性能测试入口。
 - GitHub Pages 预览。
@@ -201,6 +202,9 @@ mobile-xspreadsheet-h5
 | `main.ts` | `updateSelection(cell, ri, ci)` | 同步单格选中状态到编辑器、菜单和手柄。 |
 | `main.ts` | `updateRangeSelection(cell, range)` | 同步多格选区状态和选区地址。 |
 | `main.ts` | `renderHeaderFilters()` | 在第一行标题上叠加筛选按钮，不修改 x-spreadsheet 基座渲染逻辑。 |
+| `main.ts` | `getHeaderFilterSignature()` | 根据列宽、横向滚动和筛选激活状态生成布局签名。 |
+| `main.ts` | `scheduleHeaderFilterSync(force)` | 合并筛选入口刷新请求，避免列宽拖拽或滚动时频繁重绘 DOM。 |
+| `main.ts` | `installHeaderFilterSync()` | 包裹运行时列宽和横向滚动方法，让筛选入口跟随表头变化。 |
 | `main.ts` | `openFilterPopover(ci)` | 打开顶部列筛选面板，并按当前筛选状态初始化勾选项。 |
 | `main.ts` | `closeFilterPopover()` | 关闭顶部筛选面板并清理当前筛选列。 |
 | `main.ts` | `getFilterValues(ci)` | 从原始数据行中提取某列唯一可筛选值。 |

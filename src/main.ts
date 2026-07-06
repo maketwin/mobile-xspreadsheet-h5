@@ -32,6 +32,8 @@ const state = {
   viewportRaf: 0,
   viewportTimer: 0,
   handleRaf: 0,
+  headerFilterRaf: 0,
+  headerFilterSignature: '',
   keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
@@ -73,6 +75,7 @@ function initSpreadsheet() {
 
   state.spreadsheet.loadData(buildSheetData());
   installPerfHooks(state);
+  installHeaderFilterSync();
   state.spreadsheet.on('cell-selected', (cell, ri, ci) => {
     updateSelection(cell, ri, ci);
   });
@@ -86,7 +89,7 @@ function initSpreadsheet() {
   state.spreadsheet.sheet?.selector?.set?.(1, 2);
   state.spreadsheet.sheet?.table?.render?.();
   updateSelection({ text: rows[0][2] }, 1, 2);
-  renderHeaderFilters();
+  renderHeaderFilters(true);
   scheduleViewportUpdate();
 }
 
@@ -124,17 +127,78 @@ function updateRangeSelection(cell, range) {
 }
 
 /**
+ * 根据列宽、横向滚动和筛选状态生成筛选入口布局签名。
+ */
+function getHeaderFilterSignature() {
+  const data = state.spreadsheet?.sheet?.data;
+  if (!data?.cols) return '';
+  const widths = columns.map((_, ci) => data.cols.getWidth?.(ci) || 100).join(',');
+  const activeColumns = Object.entries(state.filters)
+    .filter(([, selected]) => selected instanceof Set)
+    .map(([ci]) => ci)
+    .join(',');
+  return [
+    data.cols.indexWidth || 52,
+    data.scroll?.x || 0,
+    widths,
+    activeColumns,
+  ].join('|');
+}
+
+/**
+ * 用 requestAnimationFrame 合并筛选入口位置刷新，避免列拖拽时频繁重绘 DOM。
+ */
+function scheduleHeaderFilterSync(force = false) {
+  cancelAnimationFrame(state.headerFilterRaf);
+  state.headerFilterRaf = requestAnimationFrame(() => renderHeaderFilters(force));
+}
+
+/**
+ * 包裹基座运行时的列宽和横向滚动方法，让筛选入口跟随表头变化。
+ */
+function installHeaderFilterSync() {
+  const data = state.spreadsheet?.sheet?.data;
+  if (!data || data.__mobileHeaderFilterSyncInstalled) return;
+  data.__mobileHeaderFilterSyncInstalled = true;
+
+  if (data.cols && typeof data.cols.setWidth === 'function') {
+    const originalSetWidth = data.cols.setWidth.bind(data.cols);
+    data.cols.setWidth = (...args) => {
+      const result = originalSetWidth(...args);
+      scheduleHeaderFilterSync();
+      return result;
+    };
+  }
+
+  if (typeof data.scrollx === 'function') {
+    const originalScrollx = data.scrollx.bind(data);
+    data.scrollx = (...args) => {
+      const before = data.scroll?.x || 0;
+      const result = originalScrollx(...args);
+      if ((data.scroll?.x || 0) !== before) scheduleHeaderFilterSync();
+      return result;
+    };
+  }
+}
+
+/**
  * 渲染第一行标题上的筛选入口，不改 x-spreadsheet 基座。
  */
-function renderHeaderFilters() {
+function renderHeaderFilters(force = false) {
   if (!els.headerFilterLayer || !state.spreadsheet?.sheet?.data) return;
-  const { cols } = state.spreadsheet.sheet.data;
+  const data = state.spreadsheet.sheet.data;
+  const signature = getHeaderFilterSignature();
+  if (!force && signature === state.headerFilterSignature) return;
+  state.headerFilterSignature = signature;
+
+  const { cols } = data;
   const indexWidth = cols.indexWidth || 52;
-  let left = indexWidth;
+  const scrollX = data.scroll?.x || 0;
+  let left = indexWidth - scrollX;
   els.headerFilterLayer.innerHTML = columns.map((title, ci) => {
     const width = cols.getWidth?.(ci) || 100;
     const active = state.filters[ci] instanceof Set;
-    const style = `left:${left + width - 30}px;width:26px;`;
+    const style = `left:${left + width - 36}px;width:24px;`;
     left += width;
     return `
       <button class="header-filter-button${active ? ' active' : ''}" type="button" style="${style}" data-filter-ci="${ci}" aria-label="${title}筛选">
@@ -301,10 +365,11 @@ function applyFilters() {
     return selected.has(String(row[Number(ci)] ?? ''));
   }));
   state.spreadsheet.loadData(buildSheetData(filteredRows));
+  installHeaderFilterSync();
   state.spreadsheet.sheet?.selector?.set?.(1, 0);
   state.spreadsheet.sheet?.table?.render?.();
   updateSelection({ text: filteredRows[0]?.[0] || '' }, 1, 0);
-  renderHeaderFilters();
+  renderHeaderFilters(true);
   scheduleViewportUpdate(0, true);
 }
 
