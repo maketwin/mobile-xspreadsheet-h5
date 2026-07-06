@@ -22,14 +22,14 @@ export const rows = [
 /**
  * 构建首屏演示表格数据，保持数据量较小，便于调试移动端交互。
  */
-export function buildSheetData() {
+export function buildSheetData(sourceRows = rows) {
   const cells: Record<number, Record<number, { text: string; style: number }>> = {};
   cells[0] = {};
   columns.forEach((text, ci) => {
     cells[0][ci] = { text, style: 1 };
   });
 
-  rows.forEach((row, ri) => {
+  sourceRows.forEach((row, ri) => {
     const rowCells: Record<number, { text: string; style: number }> = {};
     row.forEach((text, ci) => {
       rowCells[ci] = {

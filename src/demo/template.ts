@@ -24,6 +24,7 @@ export function renderAppShell(app: Element | null): void {
       <main class="sheet-viewport" id="gestureLayer">
         <div class="sheet-scale" id="scaleLayer">
           <div id="xspreadsheet"></div>
+          <div class="header-filter-layer" id="headerFilterLayer" aria-label="列筛选"></div>
         </div>
         <div class="gesture-tip" id="gestureTip">双指捏合可缩放，单指拖动可浏览表格</div>
         <div class="perf-panel hidden" id="perfPanel" aria-live="polite"></div>
@@ -73,6 +74,8 @@ export function renderAppShell(app: Element | null): void {
           <button type="button" id="zoomIn">＋</button>
         </nav>
       </section>
+
+      <div class="filter-popover hidden" id="filterPopover" role="dialog" aria-modal="true" aria-label="数据筛选"></div>
     </div>
   `;
 }
@@ -86,6 +89,8 @@ export function createDemoElements() {
     topbar: document.querySelector('.topbar'),
     gestureLayer: document.querySelector('#gestureLayer'),
     scaleLayer: document.querySelector('#scaleLayer'),
+    headerFilterLayer: document.querySelector('#headerFilterLayer'),
+    filterPopover: document.querySelector('#filterPopover'),
     zoomText: document.querySelector('#zoomText'),
     gestureTip: document.querySelector('#gestureTip'),
     perfPanel: document.querySelector('#perfPanel'),

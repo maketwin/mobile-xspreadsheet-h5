@@ -35,6 +35,9 @@
 - iOS / Android 软键盘视口兼容。
 - 底部编辑栏仅在编辑态展示。
 - 文本、数字、日期编辑。
+- 第一行标题默认展示筛选入口。
+- 点击标题筛选入口后，从顶部弹出列数据筛选面板。
+- 支持按列多选筛选、全选、清除筛选，并保持首行标题不参与过滤。
 - 复制、清空、类型切换、缩放快捷操作。
 - 大数据量渲染性能测试入口。
 - GitHub Pages 预览。
@@ -181,7 +184,7 @@ mobile-xspreadsheet-h5
 | `bottom-sheet.ts` | `createSearchSelectSheet(options)` | 创建带搜索能力的选择弹层，适合成本中心、客户、项目等长列表。 |
 | `bottom-sheet.ts` | `createCascadePickerSheet(options)` | 创建多列选择弹层，适合省市、起止城市、组织层级等场景。 |
 | `bottom-sheet.ts` | `createActionSelectSheet(options)` | 创建普通单选操作弹层，适合出差目的、状态、类型等短列表。 |
-| `sheet-data.ts` | `buildSheetData()` | 构建首屏小数据量排期表。 |
+| `sheet-data.ts` | `buildSheetData(sourceRows)` | 构建首屏排期表；第一行固定为标题行，传入的数据行可用于筛选后重建表格。 |
 | `sheet-data.ts` | `buildLargeSheetData(rowCount, colCount)` | 构建性能测试用大数据量表格。 |
 | `cell-format.ts` | `toColumnName(index)` | 将列索引转换为 Excel 风格列名。 |
 | `cell-format.ts` | `formatCellAddress(ri, ci)` | 格式化单元格地址。 |
@@ -197,6 +200,13 @@ mobile-xspreadsheet-h5
 | `main.ts` | `initSpreadsheet()` | 创建 spreadsheet 实例并绑定基础事件。 |
 | `main.ts` | `updateSelection(cell, ri, ci)` | 同步单格选中状态到编辑器、菜单和手柄。 |
 | `main.ts` | `updateRangeSelection(cell, range)` | 同步多格选区状态和选区地址。 |
+| `main.ts` | `renderHeaderFilters()` | 在第一行标题上叠加筛选按钮，不修改 x-spreadsheet 基座渲染逻辑。 |
+| `main.ts` | `openFilterPopover(ci)` | 打开顶部列筛选面板，并按当前筛选状态初始化勾选项。 |
+| `main.ts` | `closeFilterPopover()` | 关闭顶部筛选面板并清理当前筛选列。 |
+| `main.ts` | `getFilterValues(ci)` | 从原始数据行中提取某列唯一可筛选值。 |
+| `main.ts` | `readFilterSelection()` | 从筛选弹窗 DOM 中读取当前勾选值。 |
+| `main.ts` | `handleFilterPopoverClick(event)` | 处理筛选面板中的取消、确定、清除、全选和单项勾选。 |
+| `main.ts` | `applyFilters()` | 根据当前列筛选条件过滤数据行并重载表格，保留第一行标题。 |
 | `main.ts` | `setEditing(isEditing)` | 控制底部编辑栏显示并触发视口重算。 |
 | `main.ts` | `setEditorType(type, focus)` | 切换文本、数字、日期编辑模式。 |
 | `main.ts` | `commitValue(value)` | 将编辑值写回表格并关闭编辑器。 |

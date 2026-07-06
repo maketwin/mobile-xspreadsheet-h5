@@ -9,7 +9,7 @@ import { formatCellAddress, formatRangeAddress, normalizeDate } from './demo/cel
 import { createBottomSheetExamples } from './demo/bottom-sheet-examples.ts';
 import { getColumnEditorConfig } from './demo/column-editor-config.ts';
 import { installPerfHooks, runSpreadsheetPerf as runPerfTest } from './demo/perf.ts';
-import { buildSheetData, rows } from './demo/sheet-data.ts';
+import { buildSheetData, columns, rows } from './demo/sheet-data.ts';
 import { createDemoElements, renderAppShell } from './demo/template.ts';
 import './styles.css';
 
@@ -35,6 +35,8 @@ const state = {
   keyboardSyncTimers: [],
   lastViewportSize: null,
   perfMetrics: null,
+  filters: {},
+  filterColumn: null,
 };
 
 /**
@@ -84,6 +86,7 @@ function initSpreadsheet() {
   state.spreadsheet.sheet?.selector?.set?.(1, 2);
   state.spreadsheet.sheet?.table?.render?.();
   updateSelection({ text: rows[0][2] }, 1, 2);
+  renderHeaderFilters();
   scheduleViewportUpdate();
 }
 
@@ -118,6 +121,191 @@ function updateRangeSelection(cell, range) {
   els.dateInput.value = normalizeDate(text);
   syncLongPressMenuContent();
   scheduleSelectionHandleUpdate();
+}
+
+/**
+ * 渲染第一行标题上的筛选入口，不改 x-spreadsheet 基座。
+ */
+function renderHeaderFilters() {
+  if (!els.headerFilterLayer || !state.spreadsheet?.sheet?.data) return;
+  const { cols } = state.spreadsheet.sheet.data;
+  const indexWidth = cols.indexWidth || 52;
+  let left = indexWidth;
+  els.headerFilterLayer.innerHTML = columns.map((title, ci) => {
+    const width = cols.getWidth?.(ci) || 100;
+    const active = state.filters[ci] instanceof Set;
+    const style = `left:${left + width - 30}px;width:26px;`;
+    left += width;
+    return `
+      <button class="header-filter-button${active ? ' active' : ''}" type="button" style="${style}" data-filter-ci="${ci}" aria-label="${title}筛选">
+        ▾
+      </button>
+    `;
+  }).join('');
+
+  els.headerFilterLayer.querySelectorAll('[data-filter-ci]').forEach((button) => {
+    button.addEventListener('pointerdown', event => event.stopPropagation());
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openFilterPopover(Number(button.dataset.filterCi));
+    });
+  });
+}
+
+/**
+ * 打开从顶部弹出的列筛选面板。
+ */
+function openFilterPopover(ci) {
+  state.filterColumn = ci;
+  setEditing(false);
+  hideLongPressMenu();
+  const values = getFilterValues(ci);
+  const selected = state.filters[ci] || new Set(values);
+  els.filterPopover.innerHTML = `
+    <div class="filter-popover-panel">
+      <header class="filter-popover-header">
+        <button type="button" data-filter-action="cancel">取消</button>
+        <strong>${columns[ci]}筛选</strong>
+        <button type="button" data-filter-action="confirm">确定</button>
+      </header>
+      <div class="filter-popover-body">
+        <button class="filter-option all${selected.size === values.length ? ' active' : ''}" type="button" data-filter-value="__all__">
+          <span>全部</span><strong>✓</strong>
+        </button>
+        ${values.map(value => `
+          <button class="filter-option${selected.has(value) ? ' active' : ''}" type="button" data-filter-value="${escapeAttribute(value)}">
+            <span>${escapeHtml(value || '空白')}</span><strong>✓</strong>
+          </button>
+        `).join('')}
+      </div>
+      <footer class="filter-popover-footer">
+        <button type="button" data-filter-action="clear">清除筛选</button>
+      </footer>
+    </div>
+  `;
+  els.filterPopover.classList.remove('hidden');
+  requestAnimationFrame(() => els.filterPopover.classList.add('show'));
+}
+
+/**
+ * 关闭顶部筛选面板。
+ */
+function closeFilterPopover() {
+  els.filterPopover.classList.remove('show');
+  window.setTimeout(() => els.filterPopover.classList.add('hidden'), 160);
+  state.filterColumn = null;
+}
+
+/**
+ * 获取某列可筛选值。
+ */
+function getFilterValues(ci) {
+  return [...new Set(rows.map(row => String(row[ci] ?? '')))];
+}
+
+/**
+ * 从筛选弹窗 DOM 中读取当前勾选值。
+ */
+function readFilterSelection() {
+  const activeValues = [...els.filterPopover.querySelectorAll('.filter-option.active[data-filter-value]')]
+    .map(item => item.dataset.filterValue)
+    .filter(value => value && value !== '__all__');
+  return new Set(activeValues);
+}
+
+/**
+ * 转义插入 HTML 文本节点的值，避免业务数据破坏筛选弹窗结构。
+ */
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/**
+ * 转义插入 HTML 属性的值。
+ */
+function escapeAttribute(value) {
+  return escapeHtml(value);
+}
+
+/**
+ * 根据当前勾选状态刷新“全部”按钮。
+ */
+function syncAllFilterOption() {
+  const allButton = els.filterPopover.querySelector('[data-filter-value="__all__"]');
+  const valueButtons = [...els.filterPopover.querySelectorAll('.filter-option:not(.all)[data-filter-value]')];
+  if (!allButton) return;
+  allButton.classList.toggle('active', valueButtons.length > 0 && valueButtons.every(button => button.classList.contains('active')));
+}
+
+/**
+ * 处理顶部筛选弹窗内的按钮点击。
+ */
+function handleFilterPopoverClick(event) {
+  const button = event.target.closest('button');
+  if (!button || !els.filterPopover.contains(button)) return;
+
+  const action = button.dataset.filterAction;
+  if (action === 'cancel') {
+    closeFilterPopover();
+    return;
+  }
+
+  if (action === 'clear') {
+    delete state.filters[state.filterColumn];
+    applyFilters();
+    closeFilterPopover();
+    return;
+  }
+
+  if (action === 'confirm') {
+    const selected = readFilterSelection();
+    const values = getFilterValues(state.filterColumn);
+    if (selected.size === values.length) {
+      delete state.filters[state.filterColumn];
+    } else {
+      state.filters[state.filterColumn] = selected;
+    }
+    applyFilters();
+    closeFilterPopover();
+    return;
+  }
+
+  const value = button.dataset.filterValue;
+  if (!value) return;
+
+  if (value === '__all__') {
+    const shouldSelectAll = !button.classList.contains('active');
+    els.filterPopover.querySelectorAll('.filter-option[data-filter-value]').forEach((item) => {
+      item.classList.toggle('active', shouldSelectAll);
+    });
+    return;
+  }
+
+  button.classList.toggle('active');
+  syncAllFilterOption();
+}
+
+/**
+ * 应用当前筛选条件并重建 demo 表格数据。
+ */
+function applyFilters() {
+  const filteredRows = rows.filter(row => Object.entries(state.filters).every(([ci, selected]) => {
+    if (!selected) return true;
+    if (selected.size === 0) return false;
+    return selected.has(String(row[Number(ci)] ?? ''));
+  }));
+  state.spreadsheet.loadData(buildSheetData(filteredRows));
+  state.spreadsheet.sheet?.selector?.set?.(1, 0);
+  state.spreadsheet.sheet?.table?.render?.();
+  updateSelection({ text: filteredRows[0]?.[0] || '' }, 1, 0);
+  renderHeaderFilters();
+  scheduleViewportUpdate(0, true);
 }
 
 /**
@@ -618,6 +806,7 @@ function scheduleViewportUpdate(delay = 0, force = false) {
     resizeSpreadsheet(state.spreadsheet);
     els.gestureLayer.scrollLeft = scrollLeft;
     els.gestureLayer.scrollTop = scrollTop;
+    renderHeaderFilters();
     scheduleSelectionHandleUpdate();
   });
 }
@@ -631,6 +820,9 @@ function bindEvents() {
       event.stopPropagation();
     });
     els.longPressMenu.addEventListener(eventName, (event) => {
+      event.stopPropagation();
+    });
+    els.filterPopover.addEventListener(eventName, (event) => {
       event.stopPropagation();
     });
   });
@@ -677,6 +869,8 @@ function bindEvents() {
       scheduleViewportUpdate(120);
     });
   });
+
+  els.filterPopover.addEventListener('click', handleFilterPopoverClick);
 
   els.cellInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && els.cellInput.dataset.composing !== 'true') {
