@@ -23,10 +23,10 @@ export const rows = [
  * 构建首屏演示表格数据，保持数据量较小，便于调试移动端交互。
  */
 export function buildSheetData(sourceRows = rows) {
-  const cells: Record<number, Record<number, { text: string; style: number }>> = {};
-  cells[0] = {};
+  const rowData: Record<number, { cells: Record<number, { text: string; style: number }> }> = {};
+  rowData[0] = { cells: {} };
   columns.forEach((text, ci) => {
-    cells[0][ci] = { text, style: 1 };
+    rowData[0].cells[ci] = { text, style: 1 };
   });
 
   sourceRows.forEach((row, ri) => {
@@ -37,7 +37,7 @@ export function buildSheetData(sourceRows = rows) {
         style: ci === 5 ? 2 : 0,
       };
     });
-    cells[ri + 1] = rowCells;
+    rowData[ri + 1] = { cells: rowCells };
   });
 
   return {
@@ -48,7 +48,7 @@ export function buildSheetData(sourceRows = rows) {
       { bgcolor: '#eef5ff', color: '#1677ff', bold: true, align: 'center' },
       { color: '#087a5a', align: 'center' },
     ],
-    rows: { len: 120, cells },
+    rows: { len: 120, ...rowData },
     cols: {
       len: 26,
       0: { width: 92 },
@@ -66,7 +66,7 @@ export function buildSheetData(sourceRows = rows) {
  * 构建大数据量性能测试表格，支持指定行数和列数。
  */
 export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
-  const cells: Record<number, Record<number, { text: string; style: number }>> = {};
+  const rowData: Record<number, { cells: Record<number, { text: string; style: number }> }> = {};
   const statusValues = ['进行中', '待确认', '已完成', '风险'];
   const systems = ['OA', 'MES', 'ERP', '回放', '应用市场', 'AI代码生成'];
   const owners = ['郭绵翔', '李良国', '涂辉', '李星达', '吕俊伶', '魏伟剑', '冯亦磊'];
@@ -77,9 +77,9 @@ export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
     风险: 7,
   };
 
-  cells[0] = {};
+  rowData[0] = { cells: {} };
   for (let ci = 0; ci < colCount; ci += 1) {
-    cells[0][ci] = { text: ci < columns.length ? columns[ci] : `字段${ci + 1}`, style: 1 };
+    rowData[0].cells[ci] = { text: ci < columns.length ? columns[ci] : `字段${ci + 1}`, style: 1 };
   }
 
   for (let ri = 1; ri < rowCount; ri += 1) {
@@ -119,7 +119,7 @@ export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
       }
       rowCells[ci] = { text, style };
     }
-    cells[ri] = rowCells;
+    rowData[ri] = { cells: rowCells };
   }
 
   return {
@@ -151,7 +151,7 @@ export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
       { color: '#0f766e', align: 'right' },
       { color: '#7c3aed', font: { italic: true }, align: 'center' },
     ],
-    rows: { len: rowCount, cells },
+    rows: { len: rowCount, ...rowData },
     cols: {
       len: colCount,
       0: { width: 92 },
