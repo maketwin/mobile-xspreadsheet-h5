@@ -1,0 +1,6 @@
+node_modules
+dist
+src/vendor
+src_backup-*
+package-lock.json
+packages/mobile-spreadsheet-adapter.zip
