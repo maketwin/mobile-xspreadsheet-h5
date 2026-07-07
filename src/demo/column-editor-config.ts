@@ -18,7 +18,13 @@ export interface ColumnEditorConfig {
  * 真实业务可以由后端返回后转换成这个结构，点击单元格时会按 ci 自动打开对应编辑器。
  */
 export const columnEditorConfigs: ColumnEditorConfig[] = [
-  { ci: 0, field: 'costCenter', title: '成本中心', editor: 'bottom-sheet', sheetKey: 'cost-center' },
+  {
+    ci: 0,
+    field: 'costCenter',
+    title: '成本中心',
+    editor: 'bottom-sheet',
+    sheetKey: 'cost-center',
+  },
   { ci: 1, field: 'version', title: '版本', editor: 'number' },
   { ci: 2, field: 'owner', title: '负责人', editor: 'text' },
   { ci: 3, field: 'city', title: '城市', editor: 'bottom-sheet', sheetKey: 'city' },
@@ -38,8 +44,10 @@ export const defaultColumnEditorConfig: ColumnEditorConfig = {
  * 根据列索引获取编辑配置；未配置的列默认使用文本输入框。
  */
 export function getColumnEditorConfig(ci: number): ColumnEditorConfig {
-  return columnEditorConfigs.find(config => config.ci === ci) || {
-    ...defaultColumnEditorConfig,
-    ci,
-  };
+  return (
+    columnEditorConfigs.find((config) => config.ci === ci) || {
+      ...defaultColumnEditorConfig,
+      ci,
+    }
+  );
 }

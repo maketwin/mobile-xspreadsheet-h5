@@ -15,7 +15,9 @@ import { defaultNow, getScrollbars, moveScrollbar } from './runtime.ts';
 /**
  * 在宿主元素上挂载移动端手势适配器。
  */
-export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterOptions): MobileSpreadsheetAdapter {
+export function mountMobileSpreadsheetAdapter(
+  options: MobileSpreadsheetAdapterOptions,
+): MobileSpreadsheetAdapter {
   const {
     spreadsheet,
     target,
@@ -29,7 +31,8 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     onPinchStart,
     onPinchMove,
     onPinchEnd,
-    isSelectionHandle = event => (event.target as Element | null)?.closest?.('[data-mobile-selection-handle]'),
+    isSelectionHandle = (event) =>
+      (event.target as Element | null)?.closest?.('[data-mobile-selection-handle]'),
     longPressMs = 550,
     tapMoveTolerance = 10,
     dragStartTolerance = 14,
@@ -119,14 +122,14 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     let dx = 0;
     let dy = 0;
     if (clientX < rect.left + edgeSize) {
-      dx = -edgeMaxSpeed * (1 - ((clientX - rect.left) / edgeSize));
+      dx = -edgeMaxSpeed * (1 - (clientX - rect.left) / edgeSize);
     } else if (clientX > rect.right - edgeSize) {
-      dx = edgeMaxSpeed * (1 - ((rect.right - clientX) / edgeSize));
+      dx = edgeMaxSpeed * (1 - (rect.right - clientX) / edgeSize);
     }
     if (clientY < rect.top + edgeSize) {
-      dy = -edgeMaxSpeed * (1 - ((clientY - rect.top) / edgeSize));
+      dy = -edgeMaxSpeed * (1 - (clientY - rect.top) / edgeSize);
     } else if (clientY > rect.bottom - edgeSize) {
-      dy = edgeMaxSpeed * (1 - ((rect.bottom - clientY) / edgeSize));
+      dy = edgeMaxSpeed * (1 - (rect.bottom - clientY) / edgeSize);
     }
     return {
       dx: Math.trunc(dx),
@@ -147,10 +150,15 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     const { horizontal, vertical } = getScrollbars(spreadsheet);
     moveScrollbar(horizontal, 'left', dx);
     moveScrollbar(vertical, 'top', dy);
-    selectRangeEndByClientPoint(spreadsheet, state.edgeScrollPoint.clientX, state.edgeScrollPoint.clientY, {
-      moving: true,
-      anchor: state.edgeScrollPoint.anchor,
-    });
+    selectRangeEndByClientPoint(
+      spreadsheet,
+      state.edgeScrollPoint.clientX,
+      state.edgeScrollPoint.clientY,
+      {
+        moving: true,
+        anchor: state.edgeScrollPoint.anchor,
+      },
+    );
     state.edgeScrollFrame = window.requestAnimationFrame(runEdgeScroll);
   }
 
@@ -243,11 +251,12 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
 
     const selected = getSelected?.();
     const lastTap = state.lastTap;
-    const isDoubleTap = lastTap
-      && now - lastTap.time < doubleTapMs
-      && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < doubleTapTolerance
-      && lastTap.ri === selected?.ri
-      && lastTap.ci === selected?.ci;
+    const isDoubleTap =
+      lastTap &&
+      now - lastTap.time < doubleTapMs &&
+      Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < doubleTapTolerance &&
+      lastTap.ri === selected?.ri &&
+      lastTap.ci === selected?.ci;
 
     if (isDoubleTap) {
       state.lastTap = null;
@@ -310,7 +319,10 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
       clearLongPress();
       const points = [...state.pointers.values()];
       state.pinch = {
-        startDistance: Math.hypot(points[0].clientX - points[1].clientX, points[0].clientY - points[1].clientY),
+        startDistance: Math.hypot(
+          points[0].clientX - points[1].clientX,
+          points[0].clientY - points[1].clientY,
+        ),
       };
       onPinchStart?.(state.pinch, event);
     }
@@ -325,7 +337,10 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     if (handleRangeDragMove(event)) return;
 
     if (state.longPressPointerId === event.pointerId && state.longPressStart) {
-      const moved = Math.hypot(event.clientX - state.longPressStart.x, event.clientY - state.longPressStart.y);
+      const moved = Math.hypot(
+        event.clientX - state.longPressStart.x,
+        event.clientY - state.longPressStart.y,
+      );
       if (moved > tapMoveTolerance) {
         clearLongPress();
         if (state.tapStart?.pointerId === event.pointerId) state.tapStart.moved = true;
@@ -335,12 +350,18 @@ export function mountMobileSpreadsheetAdapter(options: MobileSpreadsheetAdapterO
     if (state.pointers.size !== 2 || !state.pinch) return;
     event.preventDefault();
     const points = [...state.pointers.values()];
-    const currentDistance = Math.hypot(points[0].clientX - points[1].clientX, points[0].clientY - points[1].clientY);
-    onPinchMove?.({
-      ...state.pinch,
-      currentDistance,
-      scaleDelta: state.pinch.startDistance ? currentDistance / state.pinch.startDistance : 1,
-    }, event);
+    const currentDistance = Math.hypot(
+      points[0].clientX - points[1].clientX,
+      points[0].clientY - points[1].clientY,
+    );
+    onPinchMove?.(
+      {
+        ...state.pinch,
+        currentDistance,
+        scaleDelta: state.pinch.startDistance ? currentDistance / state.pinch.startDistance : 1,
+      },
+      event,
+    );
   }
 
   /**

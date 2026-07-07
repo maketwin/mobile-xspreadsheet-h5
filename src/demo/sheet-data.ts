@@ -89,7 +89,8 @@ export function buildLargeSheetData(rowCount = 1000, colCount = 50) {
       let style = 0;
       if (ri % 2 === 0) style = 3;
       if (ci === 0) {
-        text = ri % 3 === 0 ? '移动组' : ri % 3 === 1 ? 'WEB一组' : '平台组';
+        const groupNames = ['移动组', 'WEB一组', '平台组'];
+        text = groupNames[ri % groupNames.length];
         style = 8 + (ri % 3);
       } else if (ci === 1) {
         text = `${(ri % 6) + 1}.${ci % 4}`;

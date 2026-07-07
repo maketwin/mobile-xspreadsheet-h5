@@ -28,12 +28,14 @@
 ```text
 eslint@^9.0.0
 eslint-config-ali@^16.0.0
+eslint-config-prettier@^10.0.1
+eslint-plugin-prettier@^5.2.3
 stylelint@^17.6.0
 stylelint-config-ali@^3.0.0
 prettier@^3.1.1
 prettier-config-ali@^1.0.0
 markdownlint-cli@^0.45.0
-markdownlint-config-ali@^0.1.2
+markdownlint-config-ali@^0.1.1
 ```
 
 ## 依赖可用后的校验命令

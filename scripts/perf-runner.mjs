@@ -2,12 +2,14 @@ const chromeBase = 'http://127.0.0.1:9223';
 const appUrl = 'http://127.0.0.1:3460/';
 
 async function getPageTarget() {
-  let targets = await (await fetch(`${chromeBase}/json`)).json();
-  let target = targets.find(it => it.type === 'page');
+  const targets = await (await fetch(`${chromeBase}/json`)).json();
+  let target = targets.find((it) => it.type === 'page');
   if (!target) {
-    target = await (await fetch(`${chromeBase}/json/new?${encodeURIComponent(appUrl)}`, {
-      method: 'PUT',
-    })).json();
+    target = await (
+      await fetch(`${chromeBase}/json/new?${encodeURIComponent(appUrl)}`, {
+        method: 'PUT',
+      })
+    ).json();
   }
   return target;
 }
@@ -52,7 +54,7 @@ async function waitForRuntime(client) {
       returnByValue: true,
     });
     if (result.result?.value === true) return;
-    await new Promise(resolve => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error('window.runSpreadsheetPerf was not ready');
 }

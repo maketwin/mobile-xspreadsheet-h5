@@ -137,12 +137,7 @@ function getHeaderFilterSignature() {
     .filter(([, selected]) => selected instanceof Set)
     .map(([ci]) => ci)
     .join(',');
-  return [
-    data.cols.indexWidth || 52,
-    data.scroll?.x || 0,
-    widths,
-    activeColumns,
-  ].join('|');
+  return [data.cols.indexWidth || 52, data.scroll?.x || 0, widths, activeColumns].join('|');
 }
 
 /**
@@ -198,27 +193,32 @@ function renderHeaderFilters(force = false) {
   const buttonSize = 18;
   const buttonGap = 10;
   let left = indexWidth - scrollX;
-  els.headerFilterLayer.innerHTML = columns.map((title, ci) => {
-    const width = cols.getWidth?.(ci) || 100;
-    const cellLeft = left;
-    const cellRight = cellLeft + width;
-    left += width;
-    const visibleLeft = Math.max(cellLeft, indexWidth);
-    const visibleRight = Math.min(cellRight, viewportWidth);
-    const visibleWidth = visibleRight - visibleLeft;
-    if (width < 52 || visibleWidth < 52 || cellRight > viewportWidth - 2) return '';
-    const active = state.filters[ci] instanceof Set;
-    const buttonLeft = Math.min(cellRight - buttonSize - buttonGap, visibleRight - buttonSize - buttonGap);
-    const style = `left:${Math.max(visibleLeft + 6, buttonLeft)}px;width:${buttonSize}px;height:${buttonSize}px;`;
-    return `
+  els.headerFilterLayer.innerHTML = columns
+    .map((title, ci) => {
+      const width = cols.getWidth?.(ci) || 100;
+      const cellLeft = left;
+      const cellRight = cellLeft + width;
+      left += width;
+      const visibleLeft = Math.max(cellLeft, indexWidth);
+      const visibleRight = Math.min(cellRight, viewportWidth);
+      const visibleWidth = visibleRight - visibleLeft;
+      if (width < 52 || visibleWidth < 52 || cellRight > viewportWidth - 2) return '';
+      const active = state.filters[ci] instanceof Set;
+      const buttonLeft = Math.min(
+        cellRight - buttonSize - buttonGap,
+        visibleRight - buttonSize - buttonGap,
+      );
+      const style = `left:${Math.max(visibleLeft + 6, buttonLeft)}px;width:${buttonSize}px;height:${buttonSize}px;`;
+      return `
       <button class="header-filter-button${active ? ' active' : ''}" type="button" style="${style}" data-filter-ci="${ci}" aria-label="${title}筛选">
         <span aria-hidden="true"></span>
       </button>
     `;
-  }).join('');
+    })
+    .join('');
 
   els.headerFilterLayer.querySelectorAll('[data-filter-ci]').forEach((button) => {
-    button.addEventListener('pointerdown', event => event.stopPropagation());
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -247,11 +247,15 @@ function openFilterPopover(ci) {
         <button class="filter-option all${selected.size === values.length ? ' active' : ''}" type="button" data-filter-value="__all__">
           <span>全部</span><strong>✓</strong>
         </button>
-        ${values.map(value => `
+        ${values
+          .map(
+            (value) => `
           <button class="filter-option${selected.has(value) ? ' active' : ''}" type="button" data-filter-value="${escapeAttribute(value)}">
             <span>${escapeHtml(value || '空白')}</span><strong>✓</strong>
           </button>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </div>
       <footer class="filter-popover-footer">
         <button type="button" data-filter-action="clear">清除筛选</button>
@@ -275,16 +279,18 @@ function closeFilterPopover() {
  * 获取某列可筛选值。
  */
 function getFilterValues(ci) {
-  return [...new Set(rows.map(row => String(row[ci] ?? '')))];
+  return [...new Set(rows.map((row) => String(row[ci] ?? '')))];
 }
 
 /**
  * 从筛选弹窗 DOM 中读取当前勾选值。
  */
 function readFilterSelection() {
-  const activeValues = [...els.filterPopover.querySelectorAll('.filter-option.active[data-filter-value]')]
-    .map(item => item.dataset.filterValue)
-    .filter(value => value && value !== '__all__');
+  const activeValues = [
+    ...els.filterPopover.querySelectorAll('.filter-option.active[data-filter-value]'),
+  ]
+    .map((item) => item.dataset.filterValue)
+    .filter((value) => value && value !== '__all__');
   return new Set(activeValues);
 }
 
@@ -312,9 +318,14 @@ function escapeAttribute(value) {
  */
 function syncAllFilterOption() {
   const allButton = els.filterPopover.querySelector('[data-filter-value="__all__"]');
-  const valueButtons = [...els.filterPopover.querySelectorAll('.filter-option:not(.all)[data-filter-value]')];
+  const valueButtons = [
+    ...els.filterPopover.querySelectorAll('.filter-option:not(.all)[data-filter-value]'),
+  ];
   if (!allButton) return;
-  allButton.classList.toggle('active', valueButtons.length > 0 && valueButtons.every(button => button.classList.contains('active')));
+  allButton.classList.toggle(
+    'active',
+    valueButtons.length > 0 && valueButtons.every((button) => button.classList.contains('active')),
+  );
 }
 
 /**
@@ -369,11 +380,13 @@ function handleFilterPopoverClick(event) {
  * 应用当前筛选条件并重建 demo 表格数据。
  */
 function applyFilters() {
-  const filteredRows = rows.filter(row => Object.entries(state.filters).every(([ci, selected]) => {
-    if (!selected) return true;
-    if (selected.size === 0) return false;
-    return selected.has(String(row[Number(ci)] ?? ''));
-  }));
+  const filteredRows = rows.filter((row) =>
+    Object.entries(state.filters).every(([ci, selected]) => {
+      if (!selected) return true;
+      if (selected.size === 0) return false;
+      return selected.has(String(row[Number(ci)] ?? ''));
+    }),
+  );
   state.spreadsheet.loadData(buildSheetData(filteredRows));
   installHeaderFilterSync();
   state.spreadsheet.sheet?.selector?.set?.(1, 0);
@@ -417,7 +430,12 @@ function setEditing(isEditing) {
 function setEditorType(type, focus = true) {
   state.editorType = type;
   document.documentElement.dataset.editorType = type;
-  els.cellType.textContent = type === 'date' ? '日期' : type === 'number' ? '数字' : '文本';
+  const editorTypeText = {
+    date: '日期',
+    number: '数字',
+    text: '文本',
+  };
+  els.cellType.textContent = editorTypeText[type] || '文本';
   els.textEditor.classList.toggle('hidden', type === 'date');
   els.dateEditor.classList.toggle('hidden', type !== 'date');
   els.cellInput.inputMode = type === 'number' ? 'decimal' : 'text';
@@ -775,8 +793,12 @@ function syncKeyboardOffset() {
   const offset = rawOffset;
   state.keyboardOffset = offset;
   document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
-  const editorFocused = document.activeElement === els.cellInput || document.activeElement === els.dateInput;
-  document.documentElement.classList.toggle('keyboard-open', mobileViewport && (editorFocused || offset > 80 || (vv && vv.height < window.innerHeight - 80)));
+  const editorFocused =
+    document.activeElement === els.cellInput || document.activeElement === els.dateInput;
+  document.documentElement.classList.toggle(
+    'keyboard-open',
+    mobileViewport && (editorFocused || offset > 80 || (vv && vv.height < window.innerHeight - 80)),
+  );
   if (mobileViewport && window.scrollY !== 0) {
     window.scrollTo(0, 0);
   }
@@ -787,11 +809,13 @@ function syncKeyboardOffset() {
  * 分阶段同步键盘尺寸，兼容 WebView 多次上报 visualViewport 的情况。
  */
 function scheduleKeyboardSync() {
-  state.keyboardSyncTimers.forEach(timer => window.clearTimeout(timer));
-  state.keyboardSyncTimers = [0, 80, 180, 320].map(delay => window.setTimeout(() => {
-    syncKeyboardOffset();
-    scheduleViewportUpdate(0, true);
-  }, delay));
+  state.keyboardSyncTimers.forEach((timer) => window.clearTimeout(timer));
+  state.keyboardSyncTimers = [0, 80, 180, 320].map((delay) =>
+    window.setTimeout(() => {
+      syncKeyboardOffset();
+      scheduleViewportUpdate(0, true);
+    }, delay),
+  );
 }
 
 /**
@@ -811,7 +835,7 @@ function getVisibleAppHeight() {
 function getSheetViewportSize() {
   const topbarHeight = els.topbar.getBoundingClientRect().height || 64;
   const editorHeight = state.isEditing
-    ? (state.editorHeight || els.cellEditor.getBoundingClientRect().height || 132)
+    ? state.editorHeight || els.cellEditor.getBoundingClientRect().height || 132
     : 0;
   const appWidth = els.appShell.clientWidth || window.innerWidth;
   const visibleHeight = getVisibleAppHeight();
@@ -888,7 +912,15 @@ function scheduleViewportUpdate(delay = 0, force = false) {
  * 绑定 demo 页面所有按钮、输入框、键盘和视口事件。
  */
 function bindEvents() {
-  ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend', 'click'].forEach((eventName) => {
+  [
+    'pointerdown',
+    'pointermove',
+    'pointerup',
+    'touchstart',
+    'touchmove',
+    'touchend',
+    'click',
+  ].forEach((eventName) => {
     els.cellEditor.addEventListener(eventName, (event) => {
       event.stopPropagation();
     });
@@ -960,8 +992,12 @@ function bindEvents() {
     scheduleKeyboardSync();
     scheduleViewportUpdate(80, true);
   });
-  els.cellInput.addEventListener('compositionstart', () => els.cellInput.dataset.composing = 'true');
-  els.cellInput.addEventListener('compositionend', () => els.cellInput.dataset.composing = 'false');
+  els.cellInput.addEventListener('compositionstart', () => {
+    els.cellInput.dataset.composing = 'true';
+  });
+  els.cellInput.addEventListener('compositionend', () => {
+    els.cellInput.dataset.composing = 'false';
+  });
   els.dateInput.addEventListener('focus', () => {
     hideLongPressMenu();
     document.documentElement.classList.add('keyboard-open');
@@ -989,7 +1025,11 @@ function bindEvents() {
 bindEvents();
 initSpreadsheet();
 mountAdapter();
-bottomSheetExamples = createBottomSheetExamples({ commitValue, showGestureTip, mount: els.appShell });
+bottomSheetExamples = createBottomSheetExamples({
+  commitValue,
+  showGestureTip,
+  mount: els.appShell,
+});
 window.runSpreadsheetPerf = runSpreadsheetPerf;
 window.mobileBottomSheets = bottomSheetExamples;
 setScale(1);

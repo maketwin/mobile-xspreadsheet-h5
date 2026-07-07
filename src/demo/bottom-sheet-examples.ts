@@ -58,7 +58,7 @@ export const bottomSheetConfigs = [
     key: 'cost-center',
     label: '成本中心',
     type: 'search-select',
-    getValue: context => context.currentValue,
+    getValue: (context) => context.currentValue,
     props: {
       title: '成本中心',
       searchable: true,
@@ -87,7 +87,7 @@ export const bottomSheetConfigs = [
       value: ['浙江省', '杭州市'],
     },
     onSelected({ options, commitValue, showGestureTip }) {
-      commitValue(options.map(option => option.label).join(' '));
+      commitValue(options.map((option) => option.label).join(' '));
       showGestureTip('已选择城市');
     },
   },
@@ -95,7 +95,7 @@ export const bottomSheetConfigs = [
     key: 'purpose',
     label: '出差目的',
     type: 'action-select',
-    getValue: context => context.currentValue,
+    getValue: (context) => context.currentValue,
     props: {
       title: '出差目的',
       options: travelPurposes,
@@ -115,7 +115,7 @@ export function createBottomSheetExamples({ commitValue, showGestureTip, mount }
     configs: bottomSheetConfigs,
 
     open(key, context = {}) {
-      const config = bottomSheetConfigs.find(item => item.key === key);
+      const config = bottomSheetConfigs.find((item) => item.key === key);
       if (!config) return null;
       return openSheetByConfig(config, {
         mount,
@@ -195,10 +195,14 @@ function openActionSelect(config, context) {
 async function mockCostCenterSearch({ keyword, signal }) {
   await new Promise((resolve, reject) => {
     const timer = window.setTimeout(resolve, 240);
-    signal.addEventListener('abort', () => {
-      window.clearTimeout(timer);
-      reject(new DOMException('请求已取消', 'AbortError'));
-    }, { once: true });
+    signal.addEventListener(
+      'abort',
+      () => {
+        window.clearTimeout(timer);
+        reject(new DOMException('请求已取消', 'AbortError'));
+      },
+      { once: true },
+    );
   });
   const normalized = keyword.trim().toLowerCase();
   return costCenters.filter((option) => {

@@ -1,4 +1,4 @@
-# @mobile-excel/x-spreadsheet-adapter
+# `@mobile-excel/x-spreadsheet-adapter`
 
 面向 x-spreadsheet 类实例的非侵入式移动端适配包。
 
@@ -34,29 +34,27 @@ src
 
 ## 方法备注
 
-| 文件 | 方法 | 备注 |
-| --- | --- | --- |
-| `runtime.ts` | `asSpreadsheet` | 将未知实例转换为适配包需要的最小 spreadsheet 结构。 |
-| `runtime.ts` | `getSheet` | 兼容 spreadsheet 实例或 sheet 对象，返回当前工作表。 |
-| `runtime.ts` | `getElement` | 兼容 x-spreadsheet ElementWrapper 和原生 HTMLElement。 |
-| `runtime.ts` | `getOverlayElement` | 获取表格覆盖层 DOM，用于坐标换算。 |
-| `runtime.ts` | `resizeSpreadsheet` | 调用宿主已有 resize/reload/reRender 能力。 |
-| `runtime.ts` | `getScrollbars` | 获取横向和纵向滚动条。 |
-| `runtime.ts` | `moveScrollbar` | 移动滚动条，用于边缘自动滚动。 |
-| `selection.ts` | `cellRectByClientPoint` | 将浏览器坐标转换为表格单元格 rect。 |
-| `selection.ts` | `selectedRangeIncludes` | 判断单元格是否位于当前选区内。 |
-| `selection.ts` | `getSelectedRange` | 读取当前运行时选区。 |
-| `selection.ts` | `selectedRangeClientRect` | 读取当前选区 DOM 矩形，供自定义手柄定位。 |
-| `selection.ts` | `selectRangeEndByClientPoint` | 将选区扩展到触点所在单元格，并触发基座选区事件。 |
-| `gesture.ts` | `mountMobileSpreadsheetAdapter` | 挂载移动端手势状态机，返回 `destroy()` 控制器。 |
-| `gesture.ts` | `destroy` | 卸载事件监听、计时器和动画帧。 |
+| 文件           | 方法                            | 备注                                                   |
+| -------------- | ------------------------------- | ------------------------------------------------------ |
+| `runtime.ts`   | `asSpreadsheet`                 | 将未知实例转换为适配包需要的最小 spreadsheet 结构。    |
+| `runtime.ts`   | `getSheet`                      | 兼容 spreadsheet 实例或 sheet 对象，返回当前工作表。   |
+| `runtime.ts`   | `getElement`                    | 兼容 x-spreadsheet ElementWrapper 和原生 HTMLElement。 |
+| `runtime.ts`   | `getOverlayElement`             | 获取表格覆盖层 DOM，用于坐标换算。                     |
+| `runtime.ts`   | `resizeSpreadsheet`             | 调用宿主已有 resize/reload/reRender 能力。             |
+| `runtime.ts`   | `getScrollbars`                 | 获取横向和纵向滚动条。                                 |
+| `runtime.ts`   | `moveScrollbar`                 | 移动滚动条，用于边缘自动滚动。                         |
+| `selection.ts` | `cellRectByClientPoint`         | 将浏览器坐标转换为表格单元格 rect。                    |
+| `selection.ts` | `selectedRangeIncludes`         | 判断单元格是否位于当前选区内。                         |
+| `selection.ts` | `getSelectedRange`              | 读取当前运行时选区。                                   |
+| `selection.ts` | `selectedRangeClientRect`       | 读取当前选区 DOM 矩形，供自定义手柄定位。              |
+| `selection.ts` | `selectRangeEndByClientPoint`   | 将选区扩展到触点所在单元格，并触发基座选区事件。       |
+| `gesture.ts`   | `mountMobileSpreadsheetAdapter` | 挂载移动端手势状态机，返回 `destroy()` 控制器。        |
+| `gesture.ts`   | `destroy`                       | 卸载事件监听、计时器和动画帧。                         |
 
 ## 基础用法
 
 ```js
-import {
-  mountMobileSpreadsheetAdapter,
-} from '../packages/mobile-spreadsheet-adapter/src/index.ts';
+import { mountMobileSpreadsheetAdapter } from '../packages/mobile-spreadsheet-adapter/src/index.ts';
 
 const adapter = mountMobileSpreadsheetAdapter({
   spreadsheet,
@@ -64,8 +62,8 @@ const adapter = mountMobileSpreadsheetAdapter({
   getSelected: () => selectedCellState,
   onSingleTap: () => hideEditor(),
   onDoubleTap: () => showEditor(),
-  onLongPress: event => showMenu(event.clientX, event.clientY),
-  onPinchMove: pinch => setScale(baseScale * pinch.scaleDelta),
+  onLongPress: (event) => showMenu(event.clientX, event.clientY),
+  onPinchMove: (pinch) => setScale(baseScale * pinch.scaleDelta),
 });
 
 adapter.destroy();

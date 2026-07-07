@@ -37,7 +37,7 @@ export function installPerfHooks(state) {
  * 等待两个 requestAnimationFrame，确保浏览器完成一轮布局和绘制。
  */
 function nextFrame() {
-  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 /**
@@ -69,7 +69,13 @@ function updatePerfPanel(els, result, running = false) {
 /**
  * 执行完整性能测试：生成数据、加载数据、模拟滚动并汇总渲染指标。
  */
-export async function runSpreadsheetPerf(state, els, showGestureTip, rowCount = 1000, colCount = 50) {
+export async function runSpreadsheetPerf(
+  state,
+  els,
+  showGestureTip,
+  rowCount = 1000,
+  colCount = 50,
+) {
   installPerfHooks(state);
   const result = { rows: rowCount, cols: colCount };
   updatePerfPanel(els, result, true);

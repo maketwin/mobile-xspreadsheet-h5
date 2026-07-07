@@ -22,7 +22,9 @@ export function formatCellAddress(ri: number, ci: number): string {
 /**
  * 格式化选区地址，单格返回 A1，多格返回 A1:B2。
  */
-export function formatRangeAddress(range: { sri: number; sci: number; eri: number; eci: number } | null): string {
+export function formatRangeAddress(
+  range: { sri: number; sci: number; eri: number; eci: number } | null,
+): string {
   if (!range) return '未选择';
   const start = formatCellAddress(range.sri, range.sci);
   const end = formatCellAddress(range.eri, range.eci);

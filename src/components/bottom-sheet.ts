@@ -25,7 +25,7 @@ export interface BottomSheetOptions {
   /** 弹层主体渲染函数。 */
   render: (body: HTMLElement, sheet: BottomSheet) => void;
   /** 点击头部操作按钮时触发。返回 false 可阻止自动关闭。 */
-  onAction?: (key: string, sheet: BottomSheet) => boolean | void;
+  onAction?: (key: string, sheet: BottomSheet) => unknown;
   /** 弹层关闭后触发。 */
   onClose?: () => void;
 }
@@ -165,16 +165,16 @@ export class BottomSheet {
   }
 
   private renderShell(): string {
-    const leftActions = this.options.actions?.filter(action => !action.primary) || [];
-    const rightActions = this.options.actions?.filter(action => action.primary) || [];
+    const leftActions = this.options.actions?.filter((action) => !action.primary) || [];
+    const rightActions = this.options.actions?.filter((action) => action.primary) || [];
     return `
       ${this.options.mask ? '<div class="bottom-sheet-mask"></div>' : ''}
       <section class="bottom-sheet-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(this.options.title)}">
         <header class="bottom-sheet-header">
-          <div class="bottom-sheet-actions left">${leftActions.map(action => this.renderAction(action)).join('')}</div>
+          <div class="bottom-sheet-actions left">${leftActions.map((action) => this.renderAction(action)).join('')}</div>
           <strong class="bottom-sheet-title">${escapeHtml(this.options.title)}</strong>
           <div class="bottom-sheet-actions right">
-            ${rightActions.map(action => this.renderAction(action)).join('')}
+            ${rightActions.map((action) => this.renderAction(action)).join('')}
             ${this.options.closable ? '<button class="bottom-sheet-close" type="button" aria-label="关闭">×</button>' : ''}
           </div>
         </header>
@@ -208,14 +208,17 @@ export class BottomSheet {
 }
 
 /** 创建带搜索能力的列表选择弹层。 */
-export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOptions<T>): BottomSheet {
+export function createSearchSelectSheet<T = string>(
+  options: SearchSelectSheetOptions<T>,
+): BottomSheet {
   const selected = new Set<T>();
-  const initialValues = Array.isArray(options.value)
-    ? options.value
-    : options.value !== undefined && options.value !== null
-      ? [options.value]
-      : [];
-  initialValues.forEach(value => selected.add(value));
+  let initialValues: T[] = [];
+  if (Array.isArray(options.value)) {
+    initialValues = options.value;
+  } else if (options.value !== undefined && options.value !== null) {
+    initialValues = [options.value];
+  }
+  initialValues.forEach((value) => selected.add(value));
   let keyword = '';
   let visibleOptions = options.options || [];
   let loading = false;
@@ -227,9 +230,9 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
   function emitChange(sheet: BottomSheet): void {
     const values = [...selected];
     const optionPool = mergeOptions(options.options || [], visibleOptions);
-    const selectedOptions = optionPool.filter(option => selected.has(option.value));
-    const value = options.multiple ? values : values[0] ?? null;
-    const option = options.multiple ? selectedOptions : selectedOptions[0] ?? null;
+    const selectedOptions = optionPool.filter((option) => selected.has(option.value));
+    const value = options.multiple ? values : (values[0] ?? null);
+    const option = options.multiple ? selectedOptions : (selectedOptions[0] ?? null);
     options.onChange?.(value, option);
     if (!options.multiple) sheet.hide();
   }
@@ -239,16 +242,21 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
     const filtered = options.remote
       ? visibleOptions
       : (options.options || []).filter((option) => {
-        const haystack = `${option.label} ${option.description || ''} ${option.keywords || ''}`.toLowerCase();
-        return !normalized || haystack.includes(normalized);
-      });
+          const haystack =
+            `${option.label} ${option.description || ''} ${option.keywords || ''}`.toLowerCase();
+          return !normalized || haystack.includes(normalized);
+        });
     body.innerHTML = `
-      ${options.searchable !== false ? `
+      ${
+        options.searchable !== false
+          ? `
         <label class="sheet-search">
           <span>⌕</span>
           <input type="search" placeholder="${escapeHtml(options.placeholder || '搜索')}" value="${escapeHtml(keyword)}">
         </label>
-      ` : ''}
+      `
+          : ''
+      }
       <div class="sheet-option-list">
         ${renderSearchState(filtered)}
       </div>
@@ -286,8 +294,11 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
     if (options.remote && keyword.trim().length < (options.remote.minKeywordLength || 0)) {
       return `<div class="sheet-empty">${escapeHtml(`请输入至少 ${options.remote.minKeywordLength} 个字符`)}</div>`;
     }
-    if (!filtered.length) return `<div class="sheet-empty">${escapeHtml(options.emptyText || '暂无匹配选项')}</div>`;
-    return filtered.map((option, index) => renderOption(option, selected.has(option.value), index)).join('');
+    if (!filtered.length)
+      return `<div class="sheet-empty">${escapeHtml(options.emptyText || '暂无匹配选项')}</div>`;
+    return filtered
+      .map((option, index) => renderOption(option, selected.has(option.value), index))
+      .join('');
   }
 
   function scheduleRemoteSearch(sheet: BottomSheet): void {
@@ -343,11 +354,13 @@ export function createSearchSelectSheet<T = string>(options: SearchSelectSheetOp
 }
 
 /** 创建多列联动选择弹层。 */
-export function createCascadePickerSheet<T = string>(options: CascadePickerSheetOptions<T>): BottomSheet {
+export function createCascadePickerSheet<T = string>(
+  options: CascadePickerSheetOptions<T>,
+): BottomSheet {
   const selected = options.columns.map((column, index) => {
     const value = options.value?.[index];
-    return column.options.findIndex(option => option.value === value) >= 0
-      ? column.options.findIndex(option => option.value === value)
+    return column.options.findIndex((option) => option.value === value) >= 0
+      ? column.options.findIndex((option) => option.value === value)
       : 0;
   });
 
@@ -358,15 +371,23 @@ export function createCascadePickerSheet<T = string>(options: CascadePickerSheet
   function render(body: HTMLElement): void {
     body.innerHTML = `
       <div class="cascade-picker">
-        ${options.columns.map((column, columnIndex) => `
+        ${options.columns
+          .map(
+            (column, columnIndex) => `
           <div class="cascade-column" data-column="${columnIndex}">
-            ${column.options.map((option, optionIndex) => `
+            ${column.options
+              .map(
+                (option, optionIndex) => `
               <button class="cascade-option${selected[columnIndex] === optionIndex ? ' active' : ''}" type="button" data-option="${optionIndex}">
                 ${escapeHtml(option.label)}
               </button>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </div>
     `;
     body.querySelectorAll<HTMLElement>('.cascade-option').forEach((item) => {
@@ -391,14 +412,19 @@ export function createCascadePickerSheet<T = string>(options: CascadePickerSheet
     onAction(key) {
       if (key === 'confirm') {
         const picked = currentOptions();
-        options.onConfirm?.(picked.map(option => option.value), picked);
+        options.onConfirm?.(
+          picked.map((option) => option.value),
+          picked,
+        );
       }
     },
   });
 }
 
 /** 创建普通单选操作弹层。 */
-export function createActionSelectSheet<T = string>(options: ActionSelectSheetOptions<T>): BottomSheet {
+export function createActionSelectSheet<T = string>(
+  options: ActionSelectSheetOptions<T>,
+): BottomSheet {
   return new BottomSheet({
     title: options.title,
     mount: options.mount,
@@ -447,7 +473,10 @@ async function requestRemoteOptions<T>(
       ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
       ...(remote.headers || {}),
     },
-    body: method === 'POST' ? JSON.stringify({ [remote.keywordParam || 'keyword']: keyword }) : undefined,
+    body:
+      method === 'POST'
+        ? JSON.stringify({ [remote.keywordParam || 'keyword']: keyword })
+        : undefined,
     signal,
   });
   if (!response.ok) throw new Error(`搜索失败：${response.status}`);
@@ -465,15 +494,16 @@ function buildSearchUrl<T>(remote: RemoteSearchOptions<T>, keyword: string): str
 
 function defaultMapResponse<T>(response: unknown): SheetOption<T>[] {
   const record = response as Record<string, unknown>;
-  const list = Array.isArray(response)
-    ? response
-    : Array.isArray(record?.data)
-      ? record.data
-      : Array.isArray(record?.list)
-        ? record.list
-        : Array.isArray(record?.records)
-          ? record.records
-          : [];
+  let list: unknown[] = [];
+  if (Array.isArray(response)) {
+    list = response;
+  } else if (Array.isArray(record?.data)) {
+    list = record.data;
+  } else if (Array.isArray(record?.list)) {
+    list = record.list;
+  } else if (Array.isArray(record?.records)) {
+    list = record.records;
+  }
   return list.map((item) => {
     if (typeof item === 'string') return { value: item as T, label: item };
     const row = item as Record<string, unknown>;
@@ -491,7 +521,7 @@ function defaultMapResponse<T>(response: unknown): SheetOption<T>[] {
 
 function mergeOptions<T>(left: SheetOption<T>[], right: SheetOption<T>[]): SheetOption<T>[] {
   const map = new Map<T, SheetOption<T>>();
-  [...left, ...right].forEach(option => map.set(option.value, option));
+  [...left, ...right].forEach((option) => map.set(option.value, option));
   return [...map.values()];
 }
 

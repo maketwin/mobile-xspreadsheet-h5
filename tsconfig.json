@@ -18,9 +18,5 @@
     "noEmit": true,
     "types": ["vitest/globals"]
   },
-  "include": [
-    "src",
-    "packages/mobile-spreadsheet-adapter/src",
-    "vite.config.js"
-  ]
+  "include": ["src", "packages/mobile-spreadsheet-adapter/src", "vite.config.js"]
 }

@@ -87,9 +87,9 @@
 
 - 内置触摸滚动忽略多指手势，让外层 pinch zoom 能工作。
 - 内置 touchmove 不再强制 `preventDefault`。
-- mobile 模式下禁用内置桌面编辑器。
-- mobile 模式下禁用桌面键盘输入和 paste 处理。
-- mobile 模式下移除 selector 隐藏 input，避免抢焦点。
+- `mobile` 模式下禁用内置桌面编辑器。
+- `mobile` 模式下禁用桌面键盘输入和 paste 处理。
+- `mobile` 模式下移除 selector 隐藏 input，避免抢焦点。
 - 顶层 Spreadsheet 暴露 `reload()` / `resize()`，方便外层完整重排。
 
 > 需求变更说明：后续不再继续修改 Excel 基座源码。当前 `src/vendor/x-spreadsheet`

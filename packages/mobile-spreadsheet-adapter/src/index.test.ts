@@ -1,12 +1,5 @@
 // @ts-nocheck
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cellRectByClientPoint,
   getSelectedRange,
@@ -195,8 +188,8 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     setTimeout,
     clearTimeout,
-    requestAnimationFrame: callback => setTimeout(callback, 16),
-    cancelAnimationFrame: id => clearTimeout(id),
+    requestAnimationFrame: (callback) => setTimeout(callback, 16),
+    cancelAnimationFrame: (id) => clearTimeout(id),
   });
 });
 
@@ -401,8 +394,14 @@ describe('mountMobileSpreadsheetAdapter 手势状态机', () => {
     target.handlers.pointermove(moveEvent);
     target.handlers.pointerup(makePointerEvent({ pointerId: 2, clientX: 0, clientY: 150 }));
 
-    expect(onPinchStart).toHaveBeenCalledWith(expect.objectContaining({ startDistance: 100 }), expect.any(Object));
-    expect(onPinchMove).toHaveBeenCalledWith(expect.objectContaining({ currentDistance: 150, scaleDelta: 1.5 }), moveEvent);
+    expect(onPinchStart).toHaveBeenCalledWith(
+      expect.objectContaining({ startDistance: 100 }),
+      expect.any(Object),
+    );
+    expect(onPinchMove).toHaveBeenCalledWith(
+      expect.objectContaining({ currentDistance: 150, scaleDelta: 1.5 }),
+      moveEvent,
+    );
     expect(onPinchEnd).toHaveBeenCalledTimes(1);
     expect(moveEvent.preventDefault).toHaveBeenCalled();
   });

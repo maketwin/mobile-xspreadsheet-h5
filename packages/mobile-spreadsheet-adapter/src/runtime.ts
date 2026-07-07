@@ -59,7 +59,11 @@ export function getScrollbars(spreadsheet: unknown): {
 /**
  * 按指定方向移动滚动条，当前用于拖选靠近边缘时自动滚动。
  */
-export function moveScrollbar(scrollbar: ScrollbarLike | undefined, key: string, delta: number): void {
+export function moveScrollbar(
+  scrollbar: ScrollbarLike | undefined,
+  key: string,
+  delta: number,
+): void {
   if (!scrollbar || !delta) return;
   const current = scrollbar.scroll?.() || {};
   const currentValue = Number(current[key] || 0);
