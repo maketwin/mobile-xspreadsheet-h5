@@ -908,10 +908,22 @@ button {
 .date-editor {
   min-height: 54px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px 52px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 7px;
   padding: 6px 10px 8px;
+}
+
+.date-editor {
+  grid-template-columns: minmax(0, 1fr) 52px 52px;
+}
+
+.text-input-shell {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+  align-items: center;
+  gap: 6px;
 }
 
 #cellInput,
@@ -929,6 +941,58 @@ button {
   font-size: 16px;
   user-select: text;
   -webkit-user-select: text;
+}
+
+#cellInput {
+  display: block;
+  line-height: 22px;
+  resize: none;
+  overflow-y: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-inline-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #202938;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.editor-inline-button.active,
+.editor-inline-button:active {
+  background: #eef5ff;
+  color: var(--blue);
+}
+
+.textarea-wrapped .input-row {
+  align-items: start;
+}
+
+.textarea-expanded .editor-meta {
+  display: none;
+}
+
+.textarea-expanded .input-row {
+  min-height: min(54vh, 440px);
+  align-items: start;
+  padding-top: 14px;
+}
+
+.textarea-expanded .text-input-shell {
+  height: min(54vh, 440px);
+  align-items: start;
+}
+
+.textarea-expanded .editor-inline-button {
+  margin-top: 4px;
 }
 
 #cellInput:focus,
@@ -954,12 +1018,46 @@ button {
 }
 
 .editor-toolbar {
+  position: relative;
   height: 50px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 1px;
   padding: 5px 8px 8px;
   border-top: 1px solid #edf1f6;
+}
+
+.editor-toolbar::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -25px;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: #fff;
+  color: #202938;
+  font-size: 24px;
+  line-height: 1;
+  transform: translateX(-50%);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+  pointer-events: none;
+}
+
+.editor-toolbar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 24px;
+  height: 24px;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23202938' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v3'/%3E%3Cpath d='M8 22h8'/%3E%3C/svg%3E")
+    center / 24px 24px no-repeat;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .editor-toolbar button {
@@ -967,10 +1065,15 @@ button {
   min-height: 40px;
   border: 0;
   border-radius: 8px;
-  background: #f4f7fb;
+  background: transparent;
   color: #334155;
-  font-size: 13px;
+  font-size: 22px;
   font-weight: 700;
+}
+
+.editor-toolbar button.confirm {
+  color: var(--blue);
+  font-size: 28px;
 }
 
 .keyboard-open .editor-meta {
@@ -1044,10 +1147,13 @@ button {
 
   .input-row,
   .date-editor {
-    grid-template-columns: minmax(0, 1fr) 46px 46px;
     gap: 5px;
     padding-left: 8px;
     padding-right: 8px;
+  }
+
+  .date-editor {
+    grid-template-columns: minmax(0, 1fr) 46px 46px;
   }
 
   .small-button {
@@ -1055,7 +1161,7 @@ button {
   }
 
   .editor-toolbar {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     padding-left: 6px;
     padding-right: 6px;
   }

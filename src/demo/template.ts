@@ -56,9 +56,11 @@ export function renderAppShell(app: Element | null): void {
           <span id="cellType">文本</span>
         </div>
         <div class="input-row" id="textEditor">
-          <input id="cellInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="点击单元格后编辑">
-          <button class="small-button" type="button" id="cancelEdit">取消</button>
-          <button class="small-button primary" type="button" id="saveEdit">确定</button>
+          <div class="text-input-shell">
+            <textarea id="cellInput" rows="1" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="点击单元格后编辑"></textarea>
+            <button class="editor-inline-button" type="button" id="insertLineBreak" aria-label="插入换行">↵</button>
+            <button class="editor-inline-button" type="button" id="toggleEditorExpand" aria-label="展开编辑">⌜</button>
+          </div>
         </div>
         <div class="date-editor hidden" id="dateEditor">
           <input id="dateInput" type="date">
@@ -66,12 +68,13 @@ export function renderAppShell(app: Element | null): void {
           <button class="small-button primary" type="button" id="saveDate">确定</button>
         </div>
         <nav class="editor-toolbar" aria-label="编辑工具栏">
-          <button type="button" data-editor="text">文本</button>
-          <button type="button" data-editor="number">数字</button>
-          <button type="button" data-editor="date">日期</button>
-          <button type="button" id="focusEditor">编辑</button>
-          <button type="button" id="zoomOut">－</button>
-          <button type="button" id="zoomIn">＋</button>
+          <button type="button" data-editor="text" aria-label="文本格式">A</button>
+          <button type="button" data-editor="number" aria-label="数字">＋</button>
+          <button type="button" id="focusEditor" aria-label="移动选区">↔</button>
+          <button type="button" aria-label="插入图片">▧</button>
+          <button type="button" data-editor="date" aria-label="日期">▣</button>
+          <button type="button" id="cancelEdit" aria-label="取消">×</button>
+          <button type="button" id="saveEdit" class="confirm" aria-label="确定">✓</button>
         </nav>
       </section>
 
@@ -104,6 +107,8 @@ export function createDemoElements() {
     cellAddress: document.querySelector('#cellAddress'),
     cellType: document.querySelector('#cellType'),
     cellInput: document.querySelector('#cellInput'),
+    insertLineBreak: document.querySelector('#insertLineBreak'),
+    toggleEditorExpand: document.querySelector('#toggleEditorExpand'),
     dateInput: document.querySelector('#dateInput'),
     textEditor: document.querySelector('#textEditor'),
     dateEditor: document.querySelector('#dateEditor'),

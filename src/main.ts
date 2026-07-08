@@ -24,6 +24,8 @@ const state = {
   selected: { ri: 0, ci: 0, text: '' },
   editorType: 'text',
   isEditing: false,
+  editorExpanded: false,
+  editorWrapped: false,
   scale: 1,
   baseScale: 1,
   isPinching: false,
@@ -104,6 +106,7 @@ function updateSelection(cell, ri, ci) {
   els.dateInput.value = normalizeDate(text);
 
   setEditorType(getInputEditorType(ci, text), false);
+  syncTextEditorLayout();
   syncLongPressMenuContent();
   scheduleSelectionHandleUpdate();
 }
@@ -122,6 +125,7 @@ function updateRangeSelection(cell, range) {
   els.cellAddress.textContent = formatRangeAddress(range);
   els.cellInput.value = text;
   els.dateInput.value = normalizeDate(text);
+  syncTextEditorLayout();
   syncLongPressMenuContent();
   scheduleSelectionHandleUpdate();
 }
@@ -409,6 +413,61 @@ function focusEditorControl(control) {
 }
 
 /**
+ * 根据输入内容高度同步底部编辑器的单行、多行和展开状态。
+ */
+function syncTextEditorLayout() {
+  if (!els.cellInput || state.editorType === 'date') return;
+  const input = els.cellInput;
+  input.style.height = 'auto';
+  const lineHeight = Number.parseFloat(getComputedStyle(input).lineHeight) || 22;
+  const hasManualLineBreak = input.value.includes('\n');
+  const wrapped = hasManualLineBreak || input.scrollHeight > lineHeight * 1.6;
+  state.editorWrapped = wrapped;
+  els.cellEditor.classList.toggle('textarea-wrapped', wrapped);
+  els.cellEditor.classList.toggle('textarea-expanded', state.editorExpanded);
+  els.toggleEditorExpand?.setAttribute(
+    'aria-label',
+    state.editorExpanded ? '收起编辑' : '展开编辑',
+  );
+  els.toggleEditorExpand?.classList.toggle('active', state.editorExpanded);
+
+  const visibleHeight = getVisibleAppHeight();
+  let maxHeight = 38;
+  if (state.editorExpanded) {
+    maxHeight = Math.max(180, Math.floor(visibleHeight * 0.54));
+  } else if (wrapped) {
+    maxHeight = 72;
+  }
+  const nextHeight = state.editorExpanded
+    ? maxHeight
+    : Math.min(Math.max(input.scrollHeight, 38), maxHeight);
+  input.style.height = `${nextHeight}px`;
+  scheduleViewportUpdate(0, true);
+}
+
+/**
+ * 在当前光标处插入换行，并刷新编辑器高度。
+ */
+function insertEditorLineBreak() {
+  const input = els.cellInput;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  input.value = `${input.value.slice(0, start)}\n${input.value.slice(end)}`;
+  input.setSelectionRange(start + 1, start + 1);
+  syncTextEditorLayout();
+  focusEditorControl(input);
+}
+
+/**
+ * 切换大文本编辑态。
+ */
+function toggleEditorExpand() {
+  state.editorExpanded = !state.editorExpanded;
+  syncTextEditorLayout();
+  scheduleKeyboardSync();
+}
+
+/**
  * 切换底部编辑器显示状态，并触发表格视口重算。
  */
 function setEditing(isEditing) {
@@ -417,8 +476,13 @@ function setEditing(isEditing) {
   els.cellEditor.classList.toggle('editing', isEditing);
   document.documentElement.classList.toggle('editing-cell', isEditing);
   if (!isEditing) {
+    state.editorExpanded = false;
+    state.editorWrapped = false;
+    els.cellEditor.classList.remove('textarea-expanded', 'textarea-wrapped');
     blurEditors();
     document.documentElement.classList.remove('keyboard-open');
+  } else {
+    syncTextEditorLayout();
   }
   scheduleViewportUpdate(0, true);
   scheduleSelectionHandleUpdate();
@@ -439,6 +503,8 @@ function setEditorType(type, focus = true) {
   els.textEditor.classList.toggle('hidden', type === 'date');
   els.dateEditor.classList.toggle('hidden', type !== 'date');
   els.cellInput.inputMode = type === 'number' ? 'decimal' : 'text';
+  if (type !== 'text') state.editorExpanded = false;
+  syncTextEditorLayout();
   scheduleViewportUpdate();
   if (focus) {
     const target = type === 'date' ? els.dateInput : els.cellInput;
@@ -492,6 +558,7 @@ function blurEditors() {
 function cancelEdit() {
   els.cellInput.value = state.selected.text;
   els.dateInput.value = normalizeDate(state.selected.text);
+  syncTextEditorLayout();
   setEditing(false);
 }
 
@@ -912,6 +979,10 @@ function scheduleViewportUpdate(delay = 0, force = false) {
  * 绑定 demo 页面所有按钮、输入框、键盘和视口事件。
  */
 function bindEvents() {
+  const bindClick = (selector, handler) => {
+    document.querySelector(selector)?.addEventListener('click', handler);
+  };
+
   [
     'pointerdown',
     'pointermove',
@@ -936,17 +1007,19 @@ function bindEvents() {
     if (event.target.closest('.sheet-viewport')) event.preventDefault();
   });
 
-  document.querySelector('#saveEdit').addEventListener('click', saveText);
-  document.querySelector('#cancelEdit').addEventListener('click', cancelEdit);
-  document.querySelector('#saveDate').addEventListener('click', saveDate);
-  document.querySelector('#cancelDate').addEventListener('click', cancelEdit);
-  document.querySelector('#focusEditor').addEventListener('click', () => {
+  bindClick('#saveEdit', saveText);
+  bindClick('#cancelEdit', cancelEdit);
+  bindClick('#saveDate', saveDate);
+  bindClick('#cancelDate', cancelEdit);
+  els.insertLineBreak?.addEventListener('click', insertEditorLineBreak);
+  els.toggleEditorExpand?.addEventListener('click', toggleEditorExpand);
+  bindClick('#focusEditor', () => {
     setEditorType(state.editorType, true);
     scheduleViewportUpdate(260);
   });
-  document.querySelector('#zoomIn').addEventListener('click', () => setScale(state.scale + 0.1));
-  document.querySelector('#zoomOut').addEventListener('click', () => setScale(state.scale - 0.1));
-  document.querySelector('#resetZoom').addEventListener('click', () => setScale(1));
+  bindClick('#zoomIn', () => setScale(state.scale + 0.1));
+  bindClick('#zoomOut', () => setScale(state.scale - 0.1));
+  bindClick('#resetZoom', () => setScale(1));
   document.querySelectorAll('[data-perf-rows]').forEach((button) => {
     button.addEventListener('click', () => {
       runSpreadsheetPerf(Number(button.dataset.perfRows), 50);
@@ -978,14 +1051,23 @@ function bindEvents() {
   els.filterPopover.addEventListener('click', handleFilterPopoverClick);
 
   els.cellInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && els.cellInput.dataset.composing !== 'true') {
+    if (
+      event.key === 'Enter' &&
+      (event.metaKey || event.ctrlKey) &&
+      els.cellInput.dataset.composing !== 'true'
+    ) {
       event.preventDefault();
       saveText();
     }
+    requestAnimationFrame(syncTextEditorLayout);
+  });
+  els.cellInput.addEventListener('input', () => {
+    syncTextEditorLayout();
   });
   els.cellInput.addEventListener('focus', () => {
     hideLongPressMenu();
     document.documentElement.classList.add('keyboard-open');
+    syncTextEditorLayout();
     scheduleKeyboardSync();
   });
   els.cellInput.addEventListener('blur', () => {
@@ -997,6 +1079,7 @@ function bindEvents() {
   });
   els.cellInput.addEventListener('compositionend', () => {
     els.cellInput.dataset.composing = 'false';
+    syncTextEditorLayout();
   });
   els.dateInput.addEventListener('focus', () => {
     hideLongPressMenu();
